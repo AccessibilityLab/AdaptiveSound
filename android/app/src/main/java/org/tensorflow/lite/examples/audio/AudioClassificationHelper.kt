@@ -32,6 +32,7 @@ import java.io.IOException
 
 /* My own */
 import java.lang.IllegalArgumentException
+import java.nio.LongBuffer
 /* End my own */
 
 import org.tensorflow.lite.examples.audio.fragments.AudioClassificationListener
@@ -57,6 +58,19 @@ class AudioClassificationHelper(
     private lateinit var tensorAudio: TensorAudio
     private lateinit var recorder: AudioRecord
     private lateinit var executor: ScheduledThreadPoolExecutor
+
+    private val id2lblMap = mapOf<Int, String>(
+        0 to "appliances",
+        1 to "baby cry",
+        2 to "car honk",
+        3 to "cat meow",
+        4 to "dog bark",
+        5 to "doorbell",
+        6 to "fire alarm",
+        7 to "knocking",
+        8 to "siren",
+        9 to "water running"
+        )
 
     private val classifyRunnable = Runnable {
         classifyAudio()
@@ -113,6 +127,7 @@ class AudioClassificationHelper(
                 4, // audioFormat, // ENCODING_PCM_16BIT
                 44100 // bufferSizeInBytes // I DON'T KNOW 31200 when sr=16000
             )
+            // get some stats for environment noise
             startAudioClassification()
         } catch (e: IllegalStateException) {
             listener.onError(
@@ -121,6 +136,15 @@ class AudioClassificationHelper(
 
             Log.e("AudioClassification", "TFLite failed to load with error: " + e.message)
         }
+    }
+
+    fun calculateRMS(audioTensor: FloatArray): Double {
+        val squaredSum = audioTensor.fold(0.0) { accumulator, sample ->
+            accumulator + sample * sample
+        }
+        val meanSquared = squaredSum / audioTensor.size
+        val rms = Math.sqrt(meanSquared)
+        return rms
     }
 
     fun startAudioClassification() {
@@ -149,41 +173,59 @@ class AudioClassificationHelper(
 
     private fun classifyAudio() {
         tensorAudio.load(recorder) // 1, 15600(0.975*sr)
-        val sr = recorder.getSampleRate()
-        var inferenceTime = SystemClock.uptimeMillis()
-        // println(tensorAudio.getTensorBuffer().getShape().contentToString())
-        println(interpreter!!.getSignatureInputs("inference").contentToString())
-        try {
+        
+        val rms = calculateRMS(tensorAudio.getTensorBuffer().getFloatArray())
+
+        println(rms)
+
+        if (rms > 0.01){ // TODO: the method to define the threshold for sound happening
+            val sr = recorder.getSampleRate()
+            var inferenceTime = SystemClock.uptimeMillis()
+            // println(tensorAudio.getTensorBuffer().getShape().contentToString())
+            // println(interpreter!!.getSignatureInputs("inference").contentToString())
+            // println(interpreter!!.getSignatureOutputs("inference").contentToString())
+            
             val inputs: MutableMap<String, Any> = HashMap()
-            inputs["x"] = tensorAudio.getTensorBuffer().buffer
+                inputs["x"] = tensorAudio.getTensorBuffer().buffer
 
-            val outputs: MutableMap<String, Any> = HashMap()
-            val output = TensorBuffer.createFixedSize(
-                intArrayOf(1, 10),
-                DataType.FLOAT32
-            )
-            outputs["output"] = output.buffer
-            interpreter!!.runSignature(inputs, outputs, "inference")
-            println(output.getFloatArray().contentToString())
-        } catch (e: IllegalArgumentException) {
-            listener.onError(
-                "Classification process failed. See error logs for details"
-            )
+                val outputs: MutableMap<String, Any> = HashMap()
+                // val output = TensorBuffer.createFixedSize(
+                //     intArrayOf(1, 10),
+                //     DataType.FLOAT32
+                // )
+                // outputs["output"] = output.buffer
+                val lbl = LongBuffer.allocate(1)
+                outputs["class"] = lbl
 
-            Log.e("AudioClassification", "Model failed to inference with error: " + e.message)
+            try {
+                interpreter!!.runSignature(inputs, outputs, "inference")
+                // println(lbl.array().contentToString())
+                // println(id2lblMap[lbl[0].toInt()])
+                // println(output.getFloatArray().contentToString())
+            } catch (e: IllegalArgumentException) {
+                listener.onError(
+                    "Classification process failed. See error logs for details"
+                )
+
+                Log.e("AudioClassification", "Model failed to inference with error: " + e.message)
+            }
+            
+
+            // val output = classifier.classify(tensorAudio)
+            inferenceTime = SystemClock.uptimeMillis() - inferenceTime
+
+            // val src = recorder.getAudioSource()
+            // val format = recorder.getAudioFormat()
+            // val channel = recorder.getChannelConfiguration ()
+            // val buffer = recorder.getBufferSizeInFrames()
+
+            // listener.onResult(output[0].categories, inferenceTime, sr, tensorAudio.getTensorBuffer())
+            listener.onResult(id2lblMap[lbl[0].toInt()].toString(), inferenceTime)
+        } 
+        else { // no sound
+            listener.onResult("silence", 0)
         }
         
-
-        // val output = classifier.classify(tensorAudio)
-        inferenceTime = SystemClock.uptimeMillis() - inferenceTime
-
-        // val src = recorder.getAudioSource()
-        // val format = recorder.getAudioFormat()
-        // val channel = recorder.getChannelConfiguration ()
-        // val buffer = recorder.getBufferSizeInFrames()
-
-        // listener.onResult(output[0].categories, inferenceTime, sr, tensorAudio.getTensorBuffer())
-        listener.onResult(inferenceTime, sr, tensorAudio.getTensorBuffer())
     }
 
     fun stopAudioClassification() {

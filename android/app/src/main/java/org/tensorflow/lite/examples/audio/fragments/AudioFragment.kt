@@ -37,7 +37,7 @@ import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
 interface AudioClassificationListener {
     fun onError(error: String)
     // fun onResult(results: List<Category>, inferenceTime: Long, sr: Int, tensor: TensorBuffer)
-    fun onResult(inferenceTime: Long, sr: Int, tensor: TensorBuffer)
+    fun onResult(output: String, inferenceTime: Long)
 }
 
 class AudioFragment : Fragment() {
@@ -48,12 +48,15 @@ class AudioFragment : Fragment() {
     private lateinit var audioHelper: AudioClassificationHelper
 
     private val audioClassificationListener = object : AudioClassificationListener {
-        override fun onResult(inferenceTime: Long, sr: Int, tensor: TensorBuffer) {
+        override fun onResult(output: String, inferenceTime: Long) {
             requireActivity().runOnUiThread {
-                
+                adapter.prediction = output
+                adapter.notifyDataSetChanged()
                 fragmentAudioBinding.bottomSheetLayout.inferenceTimeVal.text =
                     // String.format("%d Hz", sr)
-                    String.format("%d ms", inferenceTime)
+                    // String.format("%d ms", inferenceTime)
+                    String.format(output)
+                    
             }
         }
 

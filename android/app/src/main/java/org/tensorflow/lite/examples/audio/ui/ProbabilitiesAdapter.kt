@@ -26,6 +26,7 @@ import org.tensorflow.lite.support.label.Category
 
 internal class ProbabilitiesAdapter : RecyclerView.Adapter<ProbabilitiesAdapter.ViewHolder>() {
     var categoryList: List<Category> = emptyList()
+    var prediction: String? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding =
