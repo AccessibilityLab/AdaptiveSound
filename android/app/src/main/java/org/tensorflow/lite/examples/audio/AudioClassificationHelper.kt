@@ -33,6 +33,12 @@ import java.io.IOException
 /* My own */
 import java.lang.IllegalArgumentException
 import java.nio.LongBuffer
+import java.nio.FloatBuffer
+import java.util.concurrent.Executors
+import java.util.concurrent.ExecutorService
+import android.os.Handler
+import android.os.Looper
+import java.io.File
 /* End my own */
 
 import org.tensorflow.lite.examples.audio.fragments.AudioClassificationListener
@@ -59,6 +65,13 @@ class AudioClassificationHelper(
     private lateinit var recorder: AudioRecord
     private lateinit var executor: ScheduledThreadPoolExecutor
 
+    private var trainingExecutor: ExecutorService? = null
+
+    private val dataBuffer: MutableList<TrainingSample> = mutableListOf()
+    // To guarantee that only one thread is performing training or inference at any time
+    private val lock = Any()
+    private val handler = Handler(Looper.getMainLooper())
+
     private val id2lblMap = mapOf<Int, String>(
         0 to "appliances",
         1 to "baby cry",
@@ -81,29 +94,29 @@ class AudioClassificationHelper(
     }
 
     fun initClassifier() {
-        // Set general detection options, e.g. number of used threads
-        val baseOptionsBuilder = BaseOptions.builder()
-            .setNumThreads(numThreads)
+        // // Set general detection options, e.g. number of used threads
+        // val baseOptionsBuilder = BaseOptions.builder()
+        //     .setNumThreads(numThreads)
 
-        // Use the specified hardware for running the model. Default to CPU.
-        // Possible to also use a GPU delegate, but this requires that the classifier be created
-        // on the same thread that is using the classifier, which is outside of the scope of this
-        // sample's design.
-        when (currentDelegate) {
-            DELEGATE_CPU -> {
-                // Default
-            }
-            DELEGATE_NNAPI -> {
-                baseOptionsBuilder.useNnapi()
-            }
-        }
+        // // Use the specified hardware for running the model. Default to CPU.
+        // // Possible to also use a GPU delegate, but this requires that the classifier be created
+        // // on the same thread that is using the classifier, which is outside of the scope of this
+        // // sample's design.
+        // when (currentDelegate) {
+        //     DELEGATE_CPU -> {
+        //         // Default
+        //     }
+        //     DELEGATE_NNAPI -> {
+        //         baseOptionsBuilder.useNnapi()
+        //     }
+        // }
 
-        // Configures a set of parameters for the classifier and what results will be returned.
-        val options = AudioClassifier.AudioClassifierOptions.builder()
-            .setScoreThreshold(classificationThreshold)
-            .setMaxResults(numOfResults)
-            .setBaseOptions(baseOptionsBuilder.build())
-            .build()
+        // // Configures a set of parameters for the classifier and what results will be returned.
+        // val options = AudioClassifier.AudioClassifierOptions.builder()
+        //     .setScoreThreshold(classificationThreshold)
+        //     .setMaxResults(numOfResults)
+        //     .setBaseOptions(baseOptionsBuilder.build())
+        //     .build()
 
         try {
             // Create the classifier and required supporting objects
@@ -162,7 +175,8 @@ class AudioClassificationHelper(
 
         val lengthInMilliSeconds = 1000 // one second 
 
-        val interval = (lengthInMilliSeconds * (1 - overlap)).toLong()
+        // val interval = (lengthInMilliSeconds * (1 - overlap)).toLong()
+        val interval = (1000).toLong()
 
         executor.scheduleAtFixedRate(
             classifyRunnable,
@@ -173,57 +187,37 @@ class AudioClassificationHelper(
 
     private fun classifyAudio() {
         tensorAudio.load(recorder) // 1, 15600(0.975*sr)
-        
-        val rms = calculateRMS(tensorAudio.getTensorBuffer().getFloatArray())
 
-        println(rms)
+        synchronized(lock) {
+            val rms = calculateRMS(tensorAudio.getTensorBuffer().getFloatArray())
+            println(rms)
+            if (rms > 0.01){ // TODO: the method to define the threshold for sound happening
+                val sr = recorder.getSampleRate()
+                var inferenceTime = SystemClock.uptimeMillis()
+                
+                val inputs: MutableMap<String, Any> = HashMap()
+                    inputs["x"] = tensorAudio.getTensorBuffer().buffer
 
-        if (rms > 0.01){ // TODO: the method to define the threshold for sound happening
-            val sr = recorder.getSampleRate()
-            var inferenceTime = SystemClock.uptimeMillis()
-            // println(tensorAudio.getTensorBuffer().getShape().contentToString())
-            // println(interpreter!!.getSignatureInputs("inference").contentToString())
-            // println(interpreter!!.getSignatureOutputs("inference").contentToString())
-            
-            val inputs: MutableMap<String, Any> = HashMap()
-                inputs["x"] = tensorAudio.getTensorBuffer().buffer
+                    val outputs: MutableMap<String, Any> = HashMap()
+                    val lbl = LongBuffer.allocate(1)
+                    outputs["class"] = lbl
 
-                val outputs: MutableMap<String, Any> = HashMap()
-                // val output = TensorBuffer.createFixedSize(
-                //     intArrayOf(1, 10),
-                //     DataType.FLOAT32
-                // )
-                // outputs["output"] = output.buffer
-                val lbl = LongBuffer.allocate(1)
-                outputs["class"] = lbl
+                try {
+                    interpreter!!.runSignature(inputs, outputs, "inference")
+                } catch (e: IllegalArgumentException) {
+                    listener.onError(
+                        "Classification process failed. See error logs for details"
+                    )
 
-            try {
-                interpreter!!.runSignature(inputs, outputs, "inference")
-                // println(lbl.array().contentToString())
-                // println(id2lblMap[lbl[0].toInt()])
-                // println(output.getFloatArray().contentToString())
-            } catch (e: IllegalArgumentException) {
-                listener.onError(
-                    "Classification process failed. See error logs for details"
-                )
+                    Log.e("AudioClassification", "Model failed to inference with error: " + e.message)
+                }
+                inferenceTime = SystemClock.uptimeMillis() - inferenceTime
 
-                Log.e("AudioClassification", "Model failed to inference with error: " + e.message)
+                listener.onResult(id2lblMap[lbl[0].toInt()].toString(), inferenceTime)
+            } 
+            else { // no sound
+                listener.onResult("silence", 0)
             }
-            
-
-            // val output = classifier.classify(tensorAudio)
-            inferenceTime = SystemClock.uptimeMillis() - inferenceTime
-
-            // val src = recorder.getAudioSource()
-            // val format = recorder.getAudioFormat()
-            // val channel = recorder.getChannelConfiguration ()
-            // val buffer = recorder.getBufferSizeInFrames()
-
-            // listener.onResult(output[0].categories, inferenceTime, sr, tensorAudio.getTensorBuffer())
-            listener.onResult(id2lblMap[lbl[0].toInt()].toString(), inferenceTime)
-        } 
-        else { // no sound
-            listener.onResult("silence", 0)
         }
         
     }
@@ -233,6 +227,98 @@ class AudioClassificationHelper(
         executor.shutdownNow()
     }
 
+    /* On-edge training */
+
+    // Add data to the data buffer
+    fun collectSample(audio: FloatArray, label: FloatArray) {
+        synchronized(lock) {
+            dataBuffer.add(
+                TrainingSample(audio, label)
+            )
+        }
+    }
+
+    // Running the interpreter's signature function
+    private fun trainOneStep(
+        x: MutableList<FloatArray>, y: MutableList<FloatArray>
+    ): Float {
+        val inputs: MutableMap<String, Any> = HashMap()
+        inputs["x"] = x.toTypedArray()
+        inputs["y"] = y.toTypedArray()
+
+        val outputs: MutableMap<String, Any> = HashMap()
+        val loss = FloatBuffer.allocate(1)
+        outputs["loss"] = loss
+
+        interpreter!!.runSignature(inputs, outputs, "train")
+        return loss.get(0)
+    }
+
+    // Run fine-tuning with the data in the buffer
+    fun fineTuning() {
+        if (dataBuffer.size < BATCH_SIZE) {
+            throw RuntimeException(
+                String.format(
+                    "Too few samples to start training: need %d, got %d",
+                    BATCH_SIZE, dataBuffer.size
+                )
+            )
+        }
+
+        trainingExecutor = Executors.newSingleThreadExecutor()
+
+        trainingExecutor?.execute {
+            synchronized(lock) {
+                // var avgLoss: Float
+                var numIterations = 0
+
+                while (executor?.isShutdown == false) {
+                    // training
+                    dataBuffer.shuffle() // might not need to do this
+
+                    val trainingBatchAudios =
+                        MutableList(BATCH_SIZE) { FloatArray(44100) }
+
+                    val trainingBatchLabels =
+                        MutableList(BATCH_SIZE) { FloatArray(10) }
+
+                    dataBuffer.forEachIndexed { index, sample ->
+                        trainingBatchAudios[index] = sample.audio
+                        trainingBatchLabels[index] = sample.label
+                    }
+
+                    val loss = trainOneStep(trainingBatchAudios,trainingBatchLabels)
+                    numIterations++
+                    
+                    handler.post {
+                        listener.onTrainResult(loss)
+                    }      
+                }
+            }
+        }
+    }
+
+    // stop training the model
+    fun stopTraining() {
+        trainingExecutor!!.shutdownNow()
+    }
+
+    // update model
+    fun updateModel() {
+        // call the signature function to restore model weights
+        // no need to reload model to the interpreter
+        val outfile: File = File(context.getFilesDir(), "sc_model.tflite")
+        
+        val inputs: MutableMap<String, Any> = HashMap()
+        inputs["checkpoint_path"] = outfile.getAbsolutePath()
+        val outputs: MutableMap<String, Any> = HashMap()
+        interpreter!!.runSignature(inputs, outputs, "save")
+    }
+
+    
+
+    /* End of on-edge training */
+
     companion object {
         const val DELEGATE_CPU = 0
         const val DELEGATE_NNAPI = 1
@@ -241,5 +327,8 @@ class AudioClassificationHelper(
         const val DEFAULT_OVERLAP_VALUE = 0.5f
         const val YAMNET_MODEL = "yamnet.tflite"
         const val SPEECH_COMMAND_MODEL = "speech.tflite"
+        const val BATCH_SIZE = 20
     }
+
+    data class TrainingSample(val audio: FloatArray, val label: FloatArray)
 }

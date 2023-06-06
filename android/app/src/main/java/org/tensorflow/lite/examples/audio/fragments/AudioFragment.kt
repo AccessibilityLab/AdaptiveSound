@@ -38,6 +38,7 @@ interface AudioClassificationListener {
     fun onError(error: String)
     // fun onResult(results: List<Category>, inferenceTime: Long, sr: Int, tensor: TensorBuffer)
     fun onResult(output: String, inferenceTime: Long)
+    fun onTrainResult(loss: Float)
 }
 
 class AudioFragment : Fragment() {
@@ -55,20 +56,24 @@ class AudioFragment : Fragment() {
                 fragmentAudioBinding.bottomSheetLayout.inferenceTimeVal.text =
                     // String.format("%d Hz", sr)
                     // String.format("%d ms", inferenceTime)
-                    String.format(output)
-                    
+                    String.format(output)       
             }
+            // audioHelper.stopAudioClassification()
+            // Giving feedback
+                // Correct?
+                    // Add data
+                    // Feedback, then add data
+                // If buffer full, fine-tuning (in another thread/in background)
+            // audioHelper.startAudioClassification()
         }
 
-        // override fun onResult(results: List<Category>, inferenceTime: Long, sr: Int, tensor: TensorBuffer) {
-        //     requireActivity().runOnUiThread {
-        //         adapter.categoryList = results
-        //         adapter.notifyDataSetChanged()
-        //         fragmentAudioBinding.bottomSheetLayout.inferenceTimeVal.text =
-        //             // String.format("%d Hz", sr)
-        //             String.format("%d", tensor.getShape()[1])
-        //     }
-        // }
+        override fun onTrainResult(loss: Float) {
+            // if loss is lower than something, stop training
+            if (loss < 0.01) {
+                audioHelper.stopTraining()
+                audioHelper.updateModel()
+            }
+        }
 
         override fun onError(error: String) {
             requireActivity().runOnUiThread {
@@ -96,6 +101,7 @@ class AudioFragment : Fragment() {
             audioClassificationListener
         )
 
+        /* To be removed */
         // Allow the user to select between multiple supported audio models.
         // The original location and documentation for these models is listed in
         // the `download_model.gradle` file within this sample. You can also create your own
