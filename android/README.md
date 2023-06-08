@@ -3,7 +3,7 @@
 ## TODO
 
 - [ ] Prediction Display
-- [ ] UI
+- [X] UI
 - [ ] Collect samples and retrain
 
 ## Overview
