@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+    <string name="lbl_0">appliances</string>
+    <string name="lbl_1">baby_cry</string>
+    <string name="lbl_2">car_honk</string>
+    <string name="lbl_3">cat_meow</string>
+    <string name="lbl_4">dog_bark</string>
+    <string name="lbl_5">doorbell</string>
+    <string name="lbl_6">fire_alarm</string>
+    <string name="lbl_7">knocking</string>
+    <string name="lbl_8">siren</string>
+    <string name="lbl_9">water_running</string>
+</resources>

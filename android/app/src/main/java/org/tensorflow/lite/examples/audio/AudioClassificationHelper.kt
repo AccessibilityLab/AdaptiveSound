@@ -73,16 +73,16 @@ class AudioClassificationHelper(
     private val handler = Handler(Looper.getMainLooper())
 
     private val id2lblMap = mapOf<Int, String>(
-        0 to "appliances",
-        1 to "baby cry",
-        2 to "car honk",
-        3 to "cat meow",
-        4 to "dog bark",
-        5 to "doorbell",
-        6 to "fire alarm",
-        7 to "knocking",
-        8 to "siren",
-        9 to "water running"
+        0 to "Appliances",
+        1 to "Baby Cry",
+        2 to "Car Honk",
+        3 to "Cat Meow",
+        4 to "Dog Bark",
+        5 to "Doorbell",
+        6 to "Fire Alarm",
+        7 to "Knocking",
+        8 to "Siren",
+        9 to "Water Running"
         )
 
     private val classifyRunnable = Runnable {
@@ -94,53 +94,12 @@ class AudioClassificationHelper(
     }
 
     fun initClassifier() {
-        // // Set general detection options, e.g. number of used threads
-        // val baseOptionsBuilder = BaseOptions.builder()
-        //     .setNumThreads(numThreads)
-
-        // // Use the specified hardware for running the model. Default to CPU.
-        // // Possible to also use a GPU delegate, but this requires that the classifier be created
-        // // on the same thread that is using the classifier, which is outside of the scope of this
-        // // sample's design.
-        // when (currentDelegate) {
-        //     DELEGATE_CPU -> {
-        //         // Default
-        //     }
-        //     DELEGATE_NNAPI -> {
-        //         baseOptionsBuilder.useNnapi()
-        //     }
-        // }
-
-        // // Configures a set of parameters for the classifier and what results will be returned.
-        // val options = AudioClassifier.AudioClassifierOptions.builder()
-        //     .setScoreThreshold(classificationThreshold)
-        //     .setMaxResults(numOfResults)
-        //     .setBaseOptions(baseOptionsBuilder.build())
-        //     .build()
 
         try {
-            // Create the classifier and required supporting objects
-            // My customized classifer should be able to create TensorAudio and AudioRecord
             val interpreterOptions = Interpreter.Options()
             interpreterOptions.numThreads = numThreads
             val modelFile = FileUtil.loadMappedFile(context, "sc_model.tflite")
             interpreter =  Interpreter(modelFile, interpreterOptions)
-            // classifier = AudioClassifier.createFromFileAndOptions(context, currentModel, options)
-            // tensorAudio = classifier.createInputTensorAudio()
-            val format = TensorAudio.TensorAudioFormat.builder()
-                .setChannels(1)
-                .setSampleRate(44100)
-                .build()
-            tensorAudio = TensorAudio.create(format, 44100)
-            // recorder = classifier.createAudioRecord()
-            recorder = AudioRecord(
-                6, // audioSource, //
-                44100, // sampleRateInHz, // change to 44100
-                16, // channelConfig, // CHANNEL_IN_MONO
-                4, // audioFormat, // ENCODING_PCM_16BIT
-                44100 // bufferSizeInBytes // I DON'T KNOW 31200 when sr=16000
-            )
-            // get some stats for environment noise
             startAudioClassification()
         } catch (e: IllegalStateException) {
             listener.onError(
@@ -161,6 +120,18 @@ class AudioClassificationHelper(
     }
 
     fun startAudioClassification() {
+        val format = TensorAudio.TensorAudioFormat.builder()
+            .setChannels(1)
+            .setSampleRate(44100)
+            .build()
+        tensorAudio = TensorAudio.create(format, 44100)
+        recorder = AudioRecord(
+            6, // audioSource, //
+            44100, // sampleRateInHz, // change to 44100
+            16, // channelConfig, // CHANNEL_IN_MONO
+            4, // audioFormat, // ENCODING_PCM_16BIT
+            44100 // bufferSizeInBytes // I DON'T KNOW 31200 when sr=16000
+        )
         if (recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
             return
         }
@@ -190,7 +161,7 @@ class AudioClassificationHelper(
 
         synchronized(lock) {
             val rms = calculateRMS(tensorAudio.getTensorBuffer().getFloatArray())
-            println(rms)
+            // println("rms: " + rms)
             if (rms > 0.01){ // TODO: the method to define the threshold for sound happening
                 val sr = recorder.getSampleRate()
                 var inferenceTime = SystemClock.uptimeMillis()
@@ -212,11 +183,10 @@ class AudioClassificationHelper(
                     Log.e("AudioClassification", "Model failed to inference with error: " + e.message)
                 }
                 inferenceTime = SystemClock.uptimeMillis() - inferenceTime
-
-                listener.onResult(id2lblMap[lbl[0].toInt()].toString(), inferenceTime)
+                listener.onResult(tensorAudio.getTensorBuffer().getFloatArray(),arrayOf(lbl[0].toFloat()).toFloatArray(),id2lblMap[lbl[0].toInt()].toString(), inferenceTime)
             } 
             else { // no sound
-                listener.onResult("silence", 0)
+                listener.onResult(tensorAudio.getTensorBuffer().getFloatArray(),arrayOf(1f).toFloatArray(),"silence", 0)
             }
         }
         
@@ -236,6 +206,7 @@ class AudioClassificationHelper(
                 TrainingSample(audio, label)
             )
         }
+        Log.d("AudioClassificationHelper","buffer size: "+dataBuffer.size)
     }
 
     // Running the interpreter's signature function
