@@ -15,6 +15,20 @@
 -->
 <resources>
     <string name="app_name">TFL Audio Classification</string>
+    <string name="select">Select</string>
+    <string name="sounds">Sounds</string>
+    <string-array name="sounds">
+        <item>Appliances</item>
+        <item>Baby Cry</item>
+        <item>Car Honk</item>
+        <item>Cat Meow</item>
+        <item>Dog Bark</item>
+        <item>Doorbell</item>
+        <item>Fire Alarm</item>
+        <item>Knocking</item>
+        <item>Siren</item>
+        <item>Water Running</item>
+    </string-array>
 
     <string name="alt_threshold_button_plus">Increasing threshold of detected sound
         results button</string>

@@ -17,18 +17,22 @@
 package org.tensorflow.lite.examples.audio.fragments
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.Button
 import android.widget.RadioGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.Navigation
 import org.tensorflow.lite.examples.audio.AudioClassificationHelper
 import org.tensorflow.lite.examples.audio.R
 import org.tensorflow.lite.examples.audio.databinding.FragmentAudioBinding
-import org.tensorflow.lite.examples.audio.ui.ProbabilitiesAdapter
+//import org.tensorflow.lite.examples.audio.ui.ProbabilitiesAdapter
 import org.tensorflow.lite.support.label.Category
 /* My own */
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
@@ -44,19 +48,26 @@ interface AudioClassificationListener {
 class AudioFragment : Fragment() {
     private var _fragmentBinding: FragmentAudioBinding? = null
     private val fragmentAudioBinding get() = _fragmentBinding!!
-    private val adapter by lazy { ProbabilitiesAdapter() }
+
 
     private lateinit var audioHelper: AudioClassificationHelper
+    private lateinit var resultTextView: TextView
+    private lateinit var correctButton: Button
+    private lateinit var incorrectButton: Button
 
     private val audioClassificationListener = object : AudioClassificationListener {
         override fun onResult(output: String, inferenceTime: Long) {
             requireActivity().runOnUiThread {
-                adapter.prediction = output
-                adapter.notifyDataSetChanged()
-                fragmentAudioBinding.bottomSheetLayout.inferenceTimeVal.text =
-                    // String.format("%d Hz", sr)
-                    // String.format("%d ms", inferenceTime)
-                    String.format(output)       
+                resultTextView.text = String.format(output)
+                showButtons()
+
+                correctButton.setOnClickListener {
+                    correctButtonClicked()
+                }
+
+                incorrectButton.setOnClickListener {
+                    incorrectButtonClicked()
+                }
             }
             // audioHelper.stopAudioClassification()
             // Giving feedback
@@ -78,16 +89,16 @@ class AudioFragment : Fragment() {
         override fun onError(error: String) {
             requireActivity().runOnUiThread {
                 Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
-                adapter.categoryList = emptyList()
-                adapter.notifyDataSetChanged()
+                //adapter.categoryList = emptyList()
+                //adapter.notifyDataSetChanged()
             }
         }
     }
 
     override fun onCreateView(
-      inflater: LayoutInflater,
-      container: ViewGroup?,
-      savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
     ): View {
         _fragmentBinding = FragmentAudioBinding.inflate(inflater, container, false)
         return fragmentAudioBinding.root
@@ -95,152 +106,25 @@ class AudioFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        fragmentAudioBinding.recyclerView.adapter = adapter
+
+
+        //Setup the UI Elements
+        resultTextView = fragmentAudioBinding.root.findViewById(R.id.resultTextView)
+        correctButton = fragmentAudioBinding.root.findViewById(R.id.correctButton)
+        incorrectButton = fragmentAudioBinding.root.findViewById(R.id.incorrectButton)
+
+
+        val sounds = resources.getStringArray(R.array.sounds)
+        val arrayAdapter = ArrayAdapter(requireContext(), R.layout.dropdown_item, sounds)
+        fragmentAudioBinding.autoCompleteTxt.setAdapter(arrayAdapter)
+
+
+        //Hide all needed UI Elements on Display
+        hideUIElements()
+
         audioHelper = AudioClassificationHelper(
             requireContext(),
             audioClassificationListener
-        )
-
-        /* To be removed */
-        // Allow the user to select between multiple supported audio models.
-        // The original location and documentation for these models is listed in
-        // the `download_model.gradle` file within this sample. You can also create your own
-        // audio model by following the documentation here:
-        // https://www.tensorflow.org/lite/models/modify/model_maker/speech_recognition
-        fragmentAudioBinding.bottomSheetLayout.modelSelector.setOnCheckedChangeListener(
-            object : RadioGroup.OnCheckedChangeListener {
-            override fun onCheckedChanged(group: RadioGroup?, checkedId: Int) {
-                when (checkedId) {
-                    R.id.yamnet -> {
-                        audioHelper.stopAudioClassification()
-                        audioHelper.currentModel = AudioClassificationHelper.YAMNET_MODEL
-                        audioHelper.initClassifier()
-                    }
-                    R.id.speech_command -> {
-                        audioHelper.stopAudioClassification()
-                        audioHelper.currentModel = AudioClassificationHelper.SPEECH_COMMAND_MODEL
-                        audioHelper.initClassifier()
-                    }
-                }
-            }
-        })
-
-        // Allow the user to change the amount of overlap used in classification. More overlap
-        // can lead to more accurate resolves in classification.
-        fragmentAudioBinding.bottomSheetLayout.spinnerOverlap.onItemSelectedListener =
-            object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(
-                  parent: AdapterView<*>?,
-                  view: View?,
-                  position: Int,
-                  id: Long
-                ) {
-                    audioHelper.stopAudioClassification()
-                    audioHelper.overlap = 0.25f * position
-                    audioHelper.startAudioClassification()
-                }
-
-                override fun onNothingSelected(p0: AdapterView<*>?) {
-                    // no op
-                }
-            }
-
-        // Allow the user to change the max number of results returned by the audio classifier.
-        // Currently allows between 1 and 5 results, but can be edited here.
-        fragmentAudioBinding.bottomSheetLayout.resultsMinus.setOnClickListener {
-            if (audioHelper.numOfResults > 1) {
-                audioHelper.numOfResults--
-                audioHelper.stopAudioClassification()
-                audioHelper.initClassifier()
-                fragmentAudioBinding.bottomSheetLayout.resultsValue.text =
-                    audioHelper.numOfResults.toString()
-            }
-        }
-
-        fragmentAudioBinding.bottomSheetLayout.resultsPlus.setOnClickListener {
-            if (audioHelper.numOfResults < 5) {
-                audioHelper.numOfResults++
-                audioHelper.stopAudioClassification()
-                audioHelper.initClassifier()
-                fragmentAudioBinding.bottomSheetLayout.resultsValue.text =
-                    audioHelper.numOfResults.toString()
-            }
-        }
-
-        // Allow the user to change the confidence threshold required for the classifier to return
-        // a result. Increments in steps of 10%.
-        fragmentAudioBinding.bottomSheetLayout.thresholdMinus.setOnClickListener {
-            if (audioHelper.classificationThreshold >= 0.2) {
-                audioHelper.stopAudioClassification()
-                audioHelper.classificationThreshold -= 0.1f
-                audioHelper.initClassifier()
-                fragmentAudioBinding.bottomSheetLayout.thresholdValue.text =
-                    String.format("%.2f", audioHelper.classificationThreshold)
-            }
-        }
-
-        fragmentAudioBinding.bottomSheetLayout.thresholdPlus.setOnClickListener {
-            if (audioHelper.classificationThreshold <= 0.8) {
-                audioHelper.stopAudioClassification()
-                audioHelper.classificationThreshold += 0.1f
-                audioHelper.initClassifier()
-                fragmentAudioBinding.bottomSheetLayout.thresholdValue.text =
-                    String.format("%.2f", audioHelper.classificationThreshold)
-            }
-        }
-
-        // Allow the user to change the number of threads used for classification
-        fragmentAudioBinding.bottomSheetLayout.threadsMinus.setOnClickListener {
-            if (audioHelper.numThreads > 1) {
-                audioHelper.stopAudioClassification()
-                audioHelper.numThreads--
-                fragmentAudioBinding.bottomSheetLayout.threadsValue.text = audioHelper
-                    .numThreads
-                    .toString()
-                audioHelper.initClassifier()
-            }
-        }
-
-        fragmentAudioBinding.bottomSheetLayout.threadsPlus.setOnClickListener {
-            if (audioHelper.numThreads < 4) {
-                audioHelper.stopAudioClassification()
-                audioHelper.numThreads++
-                fragmentAudioBinding.bottomSheetLayout.threadsValue.text = audioHelper
-                    .numThreads
-                    .toString()
-                audioHelper.initClassifier()
-            }
-        }
-
-        // When clicked, change the underlying hardware used for inference. Current options are CPU
-        // and NNAPI. GPU is another available option, but when using this option you will need
-        // to initialize the classifier on the thread that does the classifying. This requires a
-        // different app structure than is used in this sample.
-        fragmentAudioBinding.bottomSheetLayout.spinnerDelegate.onItemSelectedListener =
-            object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(
-                  parent: AdapterView<*>?,
-                  view: View?,
-                  position: Int,
-                  id: Long
-                ) {
-                    audioHelper.stopAudioClassification()
-                    audioHelper.currentDelegate = position
-                    audioHelper.initClassifier()
-                }
-
-                override fun onNothingSelected(p0: AdapterView<*>?) {
-                    /* no op */
-                }
-            }
-
-        fragmentAudioBinding.bottomSheetLayout.spinnerOverlap.setSelection(
-            2,
-            false
-        )
-        fragmentAudioBinding.bottomSheetLayout.spinnerDelegate.setSelection(
-            0,
-            false
         )
     }
 
@@ -268,5 +152,101 @@ class AudioFragment : Fragment() {
     override fun onDestroyView() {
         _fragmentBinding = null
         super.onDestroyView()
+    }
+    private fun hideIncorrectView(){
+        hideSurety()
+        hideDropDown()
+    }
+
+
+    private fun hideButtons(){
+        correctButton.visibility = View.GONE
+        incorrectButton.visibility = View.GONE
+    }
+
+    private  fun showButtons(){
+        correctButton.visibility = View.VISIBLE
+        incorrectButton.visibility = View.VISIBLE
+    }
+
+    private fun showDropDown(){
+        fragmentAudioBinding.TextInputLayout.visibility = View.VISIBLE
+    }
+
+    private fun hideDropDown(){
+        fragmentAudioBinding.TextInputLayout.visibility = View.GONE
+    }
+
+    private fun hideUIElements(){
+        hideButtons()
+        hideDropDown()
+        hideSurety()
+    }
+
+    private fun correctButtonClicked(){
+        //1. Show Dropdown of Possible Sounds
+        Log.d("AudioFragment", "Correct Button Clicked")
+    }
+
+    private fun hideSurety(){
+        fragmentAudioBinding.textView2.visibility = View.GONE
+        fragmentAudioBinding.oneBtn.visibility = View.GONE
+        fragmentAudioBinding.twoBtn.visibility = View.GONE
+        fragmentAudioBinding.threeBtn.visibility = View.GONE
+        fragmentAudioBinding.fourBtn.visibility = View.GONE
+        fragmentAudioBinding.fiveBtn.visibility = View.GONE
+    }
+
+    private fun showSurety(){
+        fragmentAudioBinding.textView2.visibility = View.VISIBLE
+        fragmentAudioBinding.oneBtn.visibility = View.VISIBLE
+        fragmentAudioBinding.twoBtn.visibility = View.VISIBLE
+        fragmentAudioBinding.threeBtn.visibility = View.VISIBLE
+        fragmentAudioBinding.fourBtn.visibility = View.VISIBLE
+        fragmentAudioBinding.fiveBtn.visibility = View.VISIBLE
+    }
+
+    private fun incorrectButtonClicked(){
+        //1. Show Dropdown of Possible Sounds
+        Log.d("AudioFragment", "Incorrect Button Clicked")
+        showDropDown()
+        fragmentAudioBinding.autoCompleteTxt.onItemClickListener = AdapterView.OnItemClickListener { parent, view, position, id ->
+            val selectedItem = parent.getItemAtPosition(position) as String
+
+
+            showSurety()
+
+            var suretyScore = 0
+
+            fragmentAudioBinding.oneBtn.setOnClickListener {
+                suretyScore = 1;
+                hideIncorrectView()
+                Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
+            }
+
+            fragmentAudioBinding.twoBtn.setOnClickListener {
+                suretyScore = 2;
+                hideIncorrectView()
+                Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
+            }
+
+            fragmentAudioBinding.threeBtn.setOnClickListener {
+                suretyScore = 3;
+                hideIncorrectView()
+                Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
+            }
+
+            fragmentAudioBinding.fourBtn.setOnClickListener {
+                suretyScore = 4;
+                hideIncorrectView()
+                Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
+            }
+
+            fragmentAudioBinding.fiveBtn.setOnClickListener {
+                suretyScore = 5;
+                hideIncorrectView()
+                Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
+            }
+        }
     }
 }

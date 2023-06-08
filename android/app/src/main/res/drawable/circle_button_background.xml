@@ -1,0 +1,4 @@
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#673AB7" /> <!-- Set your desired background color here -->
+</shape>
