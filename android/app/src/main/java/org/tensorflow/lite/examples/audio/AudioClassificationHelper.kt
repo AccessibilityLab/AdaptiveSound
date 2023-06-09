@@ -209,10 +209,21 @@ class AudioClassificationHelper(
         Log.d("AudioClassificationHelper","buffer size: "+dataBuffer.size)
     }
 
+    // Check if data buffer is full
+    fun isBufferFull(): Boolean {
+        if (dataBuffer.size < BATCH_SIZE) {
+            return false
+        } else {
+            return true
+        }
+    }
+
     // Running the interpreter's signature function
     private fun trainOneStep(
         x: MutableList<FloatArray>, y: MutableList<FloatArray>
     ): Float {
+        Log.d("AudioClassificationHelper","For one step")
+
         val inputs: MutableMap<String, Any> = HashMap()
         inputs["x"] = x.toTypedArray()
         inputs["y"] = y.toTypedArray()
@@ -235,6 +246,8 @@ class AudioClassificationHelper(
                 )
             )
         }
+        
+        Log.d("AudioClassificationHelper","Start fine-tuning")
 
         trainingExecutor = Executors.newSingleThreadExecutor()
 
@@ -242,8 +255,8 @@ class AudioClassificationHelper(
             synchronized(lock) {
                 // var avgLoss: Float
                 var numIterations = 0
-
-                while (executor?.isShutdown == false) {
+                Log.d("AudioClassificationHelper","Executing")
+                while (trainingExecutor!!.isShutdown == false) {
                     // training
                     dataBuffer.shuffle() // might not need to do this
 
@@ -271,19 +284,24 @@ class AudioClassificationHelper(
 
     // stop training the model
     fun stopTraining() {
+        Log.d("AudioClassificationHelper","Stop fine-tuning")
+        // empty the data buffer
+        dataBuffer.clear()
         trainingExecutor!!.shutdownNow()
     }
 
     // update model
     fun updateModel() {
+        Log.d("AudioClassificationHelper","Saving model")
         // call the signature function to restore model weights
         // no need to reload model to the interpreter
         val outfile: File = File(context.getFilesDir(), "sc_model.tflite")
-        
+        Log.d("AudioClassificationHelper",outfile.getAbsolutePath())
         val inputs: MutableMap<String, Any> = HashMap()
         inputs["checkpoint_path"] = outfile.getAbsolutePath()
         val outputs: MutableMap<String, Any> = HashMap()
         interpreter!!.runSignature(inputs, outputs, "save")
+        Log.d("AudioClassificationHelper","model saved")
     }
 
     
@@ -298,7 +316,7 @@ class AudioClassificationHelper(
         const val DEFAULT_OVERLAP_VALUE = 0.5f
         const val YAMNET_MODEL = "yamnet.tflite"
         const val SPEECH_COMMAND_MODEL = "speech.tflite"
-        const val BATCH_SIZE = 20
+        const val BATCH_SIZE = 1
     }
 
     data class TrainingSample(val audio: FloatArray, val label: FloatArray)

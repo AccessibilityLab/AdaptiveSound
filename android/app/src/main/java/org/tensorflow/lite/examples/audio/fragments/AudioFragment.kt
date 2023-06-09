@@ -97,11 +97,14 @@ class AudioFragment : Fragment() {
         }
 
         override fun onTrainResult(loss: Float) {
+            Log.d("AudioFragment",loss.toString())
             // if loss is lower than something, stop training
-            if (loss < 0.01) {
-                audioHelper.stopTraining()
-                audioHelper.updateModel()
-            }
+            // if (loss < 0.01) {
+            //     audioHelper.stopTraining()
+            //     audioHelper.updateModel()
+            // }
+            audioHelper.stopTraining()
+            audioHelper.updateModel()
         }
 
         override fun onError(error: String) {
@@ -205,6 +208,9 @@ class AudioFragment : Fragment() {
         //1. Show Dropdown of Possible Sounds
         Log.d("AudioFragment", "Correct Button Clicked")
         audioHelper.collectSample(audio, lbl)
+        if (audioHelper.isBufferFull()) {
+            audioHelper.fineTuning()
+        }
         audioHelper.startAudioClassification()
     }
 
@@ -263,6 +269,9 @@ class AudioFragment : Fragment() {
                 hideIncorrectView()
                 if (selectedItem != "Others") {
                     audioHelper.collectSample(audio, arrayOf(lbl2idMap[selectedItem]!!.toFloat()).toFloatArray())
+                    if (audioHelper.isBufferFull()) {
+                        audioHelper.fineTuning()
+                    }
                 }
                 Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
             }
@@ -270,9 +279,11 @@ class AudioFragment : Fragment() {
             fragmentAudioBinding.fiveBtn.setOnClickListener {
                 suretyScore = 5;
                 hideIncorrectView()
-                println(selectedItem)
                 if (selectedItem != "Others") {
                     audioHelper.collectSample(audio, arrayOf(lbl2idMap[selectedItem]!!.toFloat()).toFloatArray())
+                    if (audioHelper.isBufferFull()) {
+                        audioHelper.fineTuning()
+                    }
                 }
                 Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
             }
