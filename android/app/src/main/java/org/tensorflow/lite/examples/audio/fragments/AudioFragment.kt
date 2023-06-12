@@ -42,7 +42,7 @@ interface AudioClassificationListener {
     fun onError(error: String)
     // fun onResult(results: List<Category>, inferenceTime: Long, sr: Int, tensor: TensorBuffer)
     fun onResult(audio: FloatArray, lbl: FloatArray, output: String, inferenceTime: Long)
-    fun onTrainResult(loss: Float)
+    fun onTrainResult(loss: Float, numIter: Int)
 }
 
 class AudioFragment : Fragment() {
@@ -96,15 +96,15 @@ class AudioFragment : Fragment() {
             // audioHelper.startAudioClassification()
         }
 
-        override fun onTrainResult(loss: Float) {
-            Log.d("AudioFragment",loss.toString())
+        override fun onTrainResult(loss: Float, numIter: Int) {
+            Log.d("AudioFragment","loss: " + loss.toString())
             // if loss is lower than something, stop training
-            // if (loss < 0.01) {
-            //     audioHelper.stopTraining()
-            //     audioHelper.updateModel()
-            // }
-            audioHelper.stopTraining()
-            audioHelper.updateModel()
+            if (loss < 0.01 || numIter > 5) {
+                audioHelper.stopTraining()
+                audioHelper.updateModel()
+            }
+            // audioHelper.stopTraining()
+            // audioHelper.updateModel()
         }
 
         override fun onError(error: String) {

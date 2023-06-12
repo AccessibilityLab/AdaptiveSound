@@ -94,7 +94,6 @@ class AudioClassificationHelper(
     }
 
     fun initClassifier() {
-
         try {
             val interpreterOptions = Interpreter.Options()
             interpreterOptions.numThreads = numThreads
@@ -232,7 +231,7 @@ class AudioClassificationHelper(
         val loss = FloatBuffer.allocate(1)
         outputs["loss"] = loss
 
-        interpreter!!.runSignature(inputs, outputs, "train")
+        interpreter!!.runSignature(inputs, outputs, "finetune")
         return loss.get(0)
     }
 
@@ -253,10 +252,11 @@ class AudioClassificationHelper(
 
         trainingExecutor?.execute {
             synchronized(lock) {
-                // var avgLoss: Float
+                var avgLoss: Float
                 var numIterations = 0
                 Log.d("AudioClassificationHelper","Executing")
                 while (trainingExecutor!!.isShutdown == false) {
+                    var totalLoss = 0f
                     // training
                     dataBuffer.shuffle() // might not need to do this
 
@@ -274,8 +274,11 @@ class AudioClassificationHelper(
                     val loss = trainOneStep(trainingBatchAudios,trainingBatchLabels)
                     numIterations++
                     
+                    totalLoss += loss
+                    
+                    avgLoss = totalLoss / numIterations
                     handler.post {
-                        listener.onTrainResult(loss)
+                        listener.onTrainResult(avgLoss, numIterations)
                     }      
                 }
             }
@@ -316,7 +319,7 @@ class AudioClassificationHelper(
         const val DEFAULT_OVERLAP_VALUE = 0.5f
         const val YAMNET_MODEL = "yamnet.tflite"
         const val SPEECH_COMMAND_MODEL = "speech.tflite"
-        const val BATCH_SIZE = 1
+        const val BATCH_SIZE = 5
     }
 
     data class TrainingSample(val audio: FloatArray, val label: FloatArray)
