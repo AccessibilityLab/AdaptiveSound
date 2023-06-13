@@ -14,7 +14,7 @@
     ~ limitations under the License.
 -->
 <resources>
-    <string name="app_name">TFL Audio Classification</string>
+    <string name="app_name">Adaptive Sound</string>
     <string name="select">Select</string>
     <string name="sounds">Sounds</string>
     <string-array name="sounds">

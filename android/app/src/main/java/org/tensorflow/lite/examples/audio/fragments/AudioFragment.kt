@@ -35,6 +35,7 @@ import org.tensorflow.lite.examples.audio.databinding.FragmentAudioBinding
 //import org.tensorflow.lite.examples.audio.ui.ProbabilitiesAdapter
 import org.tensorflow.lite.support.label.Category
 /* My own */
+import android.os.Handler
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
 /* End my own */
 
@@ -49,6 +50,7 @@ class AudioFragment : Fragment() {
     private var _fragmentBinding: FragmentAudioBinding? = null
     private val fragmentAudioBinding get() = _fragmentBinding!!
 
+    private val handler = Handler()
 
     private lateinit var audioHelper: AudioClassificationHelper
     private lateinit var resultTextView: TextView
@@ -68,6 +70,8 @@ class AudioFragment : Fragment() {
         "Water Running" to 9
         )
 
+    private var isClicked = false
+
     private val audioClassificationListener = object : AudioClassificationListener {
         override fun onResult(audio: FloatArray, lbl: FloatArray, output: String, inferenceTime: Long) {
             requireActivity().runOnUiThread {
@@ -77,23 +81,22 @@ class AudioFragment : Fragment() {
                     audioHelper.stopAudioClassification()
                     showButtons()
                     correctButton.setOnClickListener {
+                        isClicked = true
+
                         correctButtonClicked(audio, lbl)
                     }
                     incorrectButton.setOnClickListener {
+                        isClicked = true
+
                         incorrectButtonClicked(audio)
                     }
+                    handler.removeCallbacks(hideButtonsRunnable)
+                    handler.postDelayed(hideButtonsRunnable, 3000L)
                 } else {
                     hideButtons()
                 }
                 
             }
-            // audioHelper.stopAudioClassification()
-            // Giving feedback
-                // Correct?
-                    // Add data
-                    // Feedback, then add data
-                // If buffer full, fine-tuning (in another thread/in background)
-            // audioHelper.startAudioClassification()
         }
 
         override fun onTrainResult(loss: Float, numIter: Int) {
@@ -179,6 +182,12 @@ class AudioFragment : Fragment() {
         hideDropDown()
     }
 
+    val hideButtonsRunnable = Runnable {
+        if (!isClicked) {
+            hideButtons()
+            audioHelper.startAudioClassification()
+        }
+    }
 
     private fun hideButtons(){
         correctButton.visibility = View.GONE
@@ -186,6 +195,7 @@ class AudioFragment : Fragment() {
     }
 
     private  fun showButtons(){
+        isClicked = false
         correctButton.visibility = View.VISIBLE
         incorrectButton.visibility = View.VISIBLE
     }
@@ -250,18 +260,21 @@ class AudioFragment : Fragment() {
                 suretyScore = 1;
                 hideIncorrectView()
                 Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
+                audioHelper.startAudioClassification()
             }
 
             fragmentAudioBinding.twoBtn.setOnClickListener {
                 suretyScore = 2;
                 hideIncorrectView()
                 Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
+                audioHelper.startAudioClassification()
             }
 
             fragmentAudioBinding.threeBtn.setOnClickListener {
                 suretyScore = 3;
                 hideIncorrectView()
                 Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
+                audioHelper.startAudioClassification()
             }
 
             fragmentAudioBinding.fourBtn.setOnClickListener {
@@ -274,6 +287,7 @@ class AudioFragment : Fragment() {
                     }
                 }
                 Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
+                audioHelper.startAudioClassification()
             }
 
             fragmentAudioBinding.fiveBtn.setOnClickListener {
@@ -286,9 +300,9 @@ class AudioFragment : Fragment() {
                     }
                 }
                 Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
+                audioHelper.startAudioClassification()
             }
         }
 
-        audioHelper.startAudioClassification()
     }
 }

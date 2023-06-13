@@ -85,6 +85,8 @@ class AudioClassificationHelper(
         9 to "Water Running"
         )
 
+    private var rmsThreshold = 0.01f
+
     private val classifyRunnable = Runnable {
         classifyAudio()
     }
@@ -160,8 +162,8 @@ class AudioClassificationHelper(
 
         synchronized(lock) {
             val rms = calculateRMS(tensorAudio.getTensorBuffer().getFloatArray())
-            // println("rms: " + rms)
-            if (rms > 0.01){ // TODO: the method to define the threshold for sound happening
+            Log.d("AudioClassificationHelper", "rms: " + rms)
+            if (rms > rmsThreshold){ // TODO: the method to define the threshold for sound happening
                 val sr = recorder.getSampleRate()
                 var inferenceTime = SystemClock.uptimeMillis()
                 
@@ -305,6 +307,7 @@ class AudioClassificationHelper(
         val outputs: MutableMap<String, Any> = HashMap()
         interpreter!!.runSignature(inputs, outputs, "save")
         Log.d("AudioClassificationHelper","model saved")
+        // Log.d("AudioClassificationHelper",outfile.lastModified().toString())
     }
 
     
@@ -319,7 +322,7 @@ class AudioClassificationHelper(
         const val DEFAULT_OVERLAP_VALUE = 0.5f
         const val YAMNET_MODEL = "yamnet.tflite"
         const val SPEECH_COMMAND_MODEL = "speech.tflite"
-        const val BATCH_SIZE = 5
+        const val BATCH_SIZE = 1
     }
 
     data class TrainingSample(val audio: FloatArray, val label: FloatArray)
