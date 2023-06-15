@@ -34,11 +34,14 @@ import java.io.IOException
 import java.lang.IllegalArgumentException
 import java.nio.LongBuffer
 import java.nio.FloatBuffer
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.concurrent.Executors
 import java.util.concurrent.ExecutorService
 import android.os.Handler
 import android.os.Looper
 import java.io.File
+import kotlinx.coroutines.delay
 /* End my own */
 
 import org.tensorflow.lite.examples.audio.fragments.AudioClassificationListener
@@ -162,7 +165,7 @@ class AudioClassificationHelper(
 
         synchronized(lock) {
             val rms = calculateRMS(tensorAudio.getTensorBuffer().getFloatArray())
-            Log.d("AudioClassificationHelper", "rms: " + rms)
+            // Log.d("AudioClassificationHelper", "rms: " + rms)
             if (rms > rmsThreshold){ // TODO: the method to define the threshold for sound happening
                 val sr = recorder.getSampleRate()
                 var inferenceTime = SystemClock.uptimeMillis()
@@ -199,14 +202,23 @@ class AudioClassificationHelper(
     }
 
     /* On-edge training */
+    // Change label to categorical
+    fun toCategoricalLabel(label: FloatArray, numClasses: Int): FloatArray {
+        val categoricalLabel = FloatArray(numClasses) { 0f }
+        categoricalLabel[label.get(0).toInt()] = 1f
+        return categoricalLabel
+    }
+    
 
     // Add data to the data buffer
     fun collectSample(audio: FloatArray, label: FloatArray) {
         synchronized(lock) {
             dataBuffer.add(
-                TrainingSample(audio, label)
+                TrainingSample(audio, toCategoricalLabel(label,10))
             )
         }
+        // Log.d("AudioClassificationHelper","audio: "+audio.contentToString())
+        // Log.d("AudioClassificationHelper","label: "+toCategoricalLabel(label,10).contentToString())
         Log.d("AudioClassificationHelper","buffer size: "+dataBuffer.size)
     }
 
@@ -223,8 +235,6 @@ class AudioClassificationHelper(
     private fun trainOneStep(
         x: MutableList<FloatArray>, y: MutableList<FloatArray>
     ): Float {
-        Log.d("AudioClassificationHelper","For one step")
-
         val inputs: MutableMap<String, Any> = HashMap()
         inputs["x"] = x.toTypedArray()
         inputs["y"] = y.toTypedArray()
@@ -238,7 +248,7 @@ class AudioClassificationHelper(
     }
 
     // Run fine-tuning with the data in the buffer
-    fun fineTuning() {
+    suspend fun fineTuning() {
         if (dataBuffer.size < BATCH_SIZE) {
             throw RuntimeException(
                 String.format(
@@ -250,41 +260,79 @@ class AudioClassificationHelper(
         
         Log.d("AudioClassificationHelper","Start fine-tuning")
 
-        trainingExecutor = Executors.newSingleThreadExecutor()
+        // trainingExecutor = Executors.newSingleThreadExecutor()
 
-        trainingExecutor?.execute {
-            synchronized(lock) {
-                var avgLoss: Float
-                var numIterations = 0
-                Log.d("AudioClassificationHelper","Executing")
-                while (trainingExecutor!!.isShutdown == false) {
-                    var totalLoss = 0f
-                    // training
-                    dataBuffer.shuffle() // might not need to do this
+        // trainingExecutor?.execute {
+        //     synchronized(lock) {
+        //         var avgLoss: Float
+        //         var numIterations = 0
+        //         while (trainingExecutor!!.isShutdown == false) {
+        //             var totalLoss = 0f
+        //             // training
+        //             dataBuffer.shuffle() // might not need to do this
 
-                    val trainingBatchAudios =
-                        MutableList(BATCH_SIZE) { FloatArray(44100) }
+        //             val trainingBatchAudios =
+        //                 MutableList(BATCH_SIZE) { FloatArray(44100) }
 
-                    val trainingBatchLabels =
-                        MutableList(BATCH_SIZE) { FloatArray(10) }
+        //             val trainingBatchLabels =
+        //                 MutableList(BATCH_SIZE) { FloatArray(10) }
 
-                    dataBuffer.forEachIndexed { index, sample ->
-                        trainingBatchAudios[index] = sample.audio
-                        trainingBatchLabels[index] = sample.label
-                    }
+        //             dataBuffer.forEachIndexed { index, sample ->
+        //                 trainingBatchAudios[index] = sample.audio
+        //                 trainingBatchLabels[index] = sample.label
+        //             }
 
-                    val loss = trainOneStep(trainingBatchAudios,trainingBatchLabels)
-                    numIterations++
+        //             val loss = trainOneStep(trainingBatchAudios,trainingBatchLabels)
+        //             numIterations++
                     
-                    totalLoss += loss
+        //             totalLoss += loss
                     
-                    avgLoss = totalLoss / numIterations
-                    handler.post {
-                        listener.onTrainResult(avgLoss, numIterations)
-                    }      
-                }
+        //             avgLoss = totalLoss / numIterations
+        //             handler.post {
+        //                 listener.onTrainResult(avgLoss, numIterations)
+        //             }      
+        //         }
+        //     }
+        // }
+        var avgLoss: Float
+        var numIterations = 0
+        while (numIterations < 5) {
+            var totalLoss = 0f
+            // training
+            dataBuffer.shuffle() // might not need to do this
+
+            val trainingBatchAudios =
+                MutableList(BATCH_SIZE) { FloatArray(44100) }
+
+            val trainingBatchLabels =
+                MutableList(BATCH_SIZE) { FloatArray(10) }
+
+            dataBuffer.forEachIndexed { index, sample ->
+                trainingBatchAudios[index] = sample.audio
+                trainingBatchLabels[index] = sample.label
             }
+
+            Log.d("AudioClassificationHelper","audio: "+trainingBatchAudios.toString())
+            Log.d("AudioClassificationHelper","label: "+trainingBatchLabels.toString())
+
+            val loss = trainOneStep(trainingBatchAudios,trainingBatchLabels)
+            numIterations++
+            
+            totalLoss += loss
+            
+            avgLoss = totalLoss / numIterations
+            handler.post {
+                listener.onTrainResult(loss, numIterations)
+            }      
         }
+        dataBuffer.clear()
+        val outfile: File = File(context.getFilesDir(), "sc_model.tflite")
+        Log.d("AudioClassificationHelper",outfile.getAbsolutePath())
+        val inputs: MutableMap<String, Any> = HashMap()
+        inputs["checkpoint_path"] = outfile.getAbsolutePath()
+        val outputs: MutableMap<String, Any> = HashMap()
+        interpreter!!.runSignature(inputs, outputs, "save")
+        Log.d("AudioClassificationHelper","Finish fine-tuning")
     }
 
     // stop training the model

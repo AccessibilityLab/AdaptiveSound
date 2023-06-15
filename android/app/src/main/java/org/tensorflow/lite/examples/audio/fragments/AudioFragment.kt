@@ -35,13 +35,18 @@ import org.tensorflow.lite.examples.audio.databinding.FragmentAudioBinding
 //import org.tensorflow.lite.examples.audio.ui.ProbabilitiesAdapter
 import org.tensorflow.lite.support.label.Category
 /* My own */
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import android.os.Handler
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
+import java.io.DataOutputStream
+import java.io.FileOutputStream
+import java.nio.ByteBuffer
 /* End my own */
 
 interface AudioClassificationListener {
     fun onError(error: String)
-    // fun onResult(results: List<Category>, inferenceTime: Long, sr: Int, tensor: TensorBuffer)
     fun onResult(audio: FloatArray, lbl: FloatArray, output: String, inferenceTime: Long)
     fun onTrainResult(loss: Float, numIter: Int)
 }
@@ -78,20 +83,42 @@ class AudioFragment : Fragment() {
                 resultTextView.text = String.format(output)
 
                 if (output != "silence") {
+                    // Log.d("AudioFragment",output)
+                    // Log.d("AudioFragment",audio.contentToString())
+                    // val outputStream = FileOutputStream("/storage/emulated/0/Android/data/org.tensorflow.lite.examples.audio/files/waveform.txt")
+                    // val dataOutputStream = DataOutputStream(outputStream)
+
+                    // try {
+                    //     // for (value in audio) {
+                    //     //     dataOutputStream.writeFloat(value)
+                    //     // }
+                    //     val text = audio.contentToString().toByteArray()
+                    //     dataOutputStream.writeBytes(audio.contentToString())
+                    // } catch (e: Exception) {
+                    //     e.printStackTrace()
+                    // } finally {
+                    //     dataOutputStream.close()
+                    //     outputStream.close()
+                    // }
+
+
                     audioHelper.stopAudioClassification()
+                    
                     showButtons()
                     correctButton.setOnClickListener {
                         isClicked = true
+                        hideButtons()
 
                         correctButtonClicked(audio, lbl)
                     }
                     incorrectButton.setOnClickListener {
                         isClicked = true
+                        hideButtons()
 
                         incorrectButtonClicked(audio)
                     }
                     handler.removeCallbacks(hideButtonsRunnable)
-                    handler.postDelayed(hideButtonsRunnable, 3000L)
+                    handler.postDelayed(hideButtonsRunnable, 1000000L)
                 } else {
                     hideButtons()
                 }
@@ -102,12 +129,10 @@ class AudioFragment : Fragment() {
         override fun onTrainResult(loss: Float, numIter: Int) {
             Log.d("AudioFragment","loss: " + loss.toString())
             // if loss is lower than something, stop training
-            if (loss < 0.01 || numIter > 5) {
-                audioHelper.stopTraining()
-                audioHelper.updateModel()
-            }
-            // audioHelper.stopTraining()
-            // audioHelper.updateModel()
+            // if (loss < 0.01 || numIter > 5) {
+            //     audioHelper.stopTraining()
+            //     audioHelper.updateModel()
+            // }
         }
 
         override fun onError(error: String) {
@@ -218,9 +243,13 @@ class AudioFragment : Fragment() {
         //1. Show Dropdown of Possible Sounds
         Log.d("AudioFragment", "Correct Button Clicked")
         audioHelper.collectSample(audio, lbl)
+
         if (audioHelper.isBufferFull()) {
-            audioHelper.fineTuning()
+            CoroutineScope(Dispatchers.Default).launch{
+                audioHelper.fineTuning()
+            }
         }
+        
         audioHelper.startAudioClassification()
     }
 
@@ -283,7 +312,9 @@ class AudioFragment : Fragment() {
                 if (selectedItem != "Others") {
                     audioHelper.collectSample(audio, arrayOf(lbl2idMap[selectedItem]!!.toFloat()).toFloatArray())
                     if (audioHelper.isBufferFull()) {
-                        audioHelper.fineTuning()
+                        CoroutineScope(Dispatchers.Default).launch{
+                            audioHelper.fineTuning()
+                        }
                     }
                 }
                 Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
@@ -296,7 +327,9 @@ class AudioFragment : Fragment() {
                 if (selectedItem != "Others") {
                     audioHelper.collectSample(audio, arrayOf(lbl2idMap[selectedItem]!!.toFloat()).toFloatArray())
                     if (audioHelper.isBufferFull()) {
-                        audioHelper.fineTuning()
+                        CoroutineScope(Dispatchers.Default).launch{
+                            audioHelper.fineTuning()
+                        }
                     }
                 }
                 Log.d("AudioFragment", (selectedItem + ":" + suretyScore))
