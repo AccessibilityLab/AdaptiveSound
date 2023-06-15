@@ -171,11 +171,13 @@ class AudioClassificationHelper(
                 var inferenceTime = SystemClock.uptimeMillis()
                 
                 val inputs: MutableMap<String, Any> = HashMap()
-                    inputs["x"] = tensorAudio.getTensorBuffer().buffer
+                inputs["x"] = tensorAudio.getTensorBuffer().buffer
 
-                    val outputs: MutableMap<String, Any> = HashMap()
-                    val lbl = LongBuffer.allocate(1)
-                    outputs["class"] = lbl
+                val outputs: MutableMap<String, Any> = HashMap()
+                val lbl = LongBuffer.allocate(1)
+                outputs["class"] = lbl
+                val probs = FloatBuffer.allocate(10)
+                outputs["output"] = probs
 
                 try {
                     interpreter!!.runSignature(inputs, outputs, "inference")
@@ -186,11 +188,17 @@ class AudioClassificationHelper(
 
                     Log.e("AudioClassification", "Model failed to inference with error: " + e.message)
                 }
+
+                val class_probs = FloatArray(10) {0f}
+                for (i in 0 until 10) {
+                    class_probs[i] = probs[i]
+                }
+
                 inferenceTime = SystemClock.uptimeMillis() - inferenceTime
-                listener.onResult(tensorAudio.getTensorBuffer().getFloatArray(),arrayOf(lbl[0].toFloat()).toFloatArray(),id2lblMap[lbl[0].toInt()].toString(), inferenceTime)
+                listener.onResult(tensorAudio.getTensorBuffer().getFloatArray(),arrayOf(lbl[0].toFloat()).toFloatArray(),id2lblMap[lbl[0].toInt()].toString(), class_probs, inferenceTime)
             } 
             else { // no sound
-                listener.onResult(tensorAudio.getTensorBuffer().getFloatArray(),arrayOf(1f).toFloatArray(),"silence", 0)
+                listener.onResult(tensorAudio.getTensorBuffer().getFloatArray(),arrayOf(1f).toFloatArray(),"silence", floatArrayOf(0f), 0)
             }
         }
         
@@ -370,7 +378,7 @@ class AudioClassificationHelper(
         const val DEFAULT_OVERLAP_VALUE = 0.5f
         const val YAMNET_MODEL = "yamnet.tflite"
         const val SPEECH_COMMAND_MODEL = "speech.tflite"
-        const val BATCH_SIZE = 1
+        const val BATCH_SIZE = 20
     }
 
     data class TrainingSample(val audio: FloatArray, val label: FloatArray)
