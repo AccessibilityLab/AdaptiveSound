@@ -86,6 +86,7 @@ class AudioFragment : Fragment() {
                     audioHelper.stopAudioClassification()
 
                     val z = 0
+                    Log.d("AudioFragment", "Feelings")
                     
                     showButtons()
                     correctButton.setOnClickListener {
