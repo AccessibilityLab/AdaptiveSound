@@ -47,7 +47,7 @@ import java.nio.ByteBuffer
 
 interface AudioClassificationListener {
     fun onError(error: String)
-    fun onResult(audio: FloatArray, lbl: FloatArray, output: String, inferenceTime: Long)
+    fun onResult(audio: FloatArray, lbl: FloatArray, output: String, probs: FloatArray, inferenceTime: Long)
     fun onTrainResult(loss: Float, numIter: Int)
 }
 
@@ -78,30 +78,11 @@ class AudioFragment : Fragment() {
     private var isClicked = false
 
     private val audioClassificationListener = object : AudioClassificationListener {
-        override fun onResult(audio: FloatArray, lbl: FloatArray, output: String, inferenceTime: Long) {
+        override fun onResult(audio: FloatArray, lbl: FloatArray, output: String, probs: FloatArray, inferenceTime: Long) {
             requireActivity().runOnUiThread {
                 resultTextView.text = String.format(output)
 
                 if (output != "silence") {
-                    // Log.d("AudioFragment",output)
-                    // Log.d("AudioFragment",audio.contentToString())
-                    // val outputStream = FileOutputStream("/storage/emulated/0/Android/data/org.tensorflow.lite.examples.audio/files/waveform.txt")
-                    // val dataOutputStream = DataOutputStream(outputStream)
-
-                    // try {
-                    //     // for (value in audio) {
-                    //     //     dataOutputStream.writeFloat(value)
-                    //     // }
-                    //     val text = audio.contentToString().toByteArray()
-                    //     dataOutputStream.writeBytes(audio.contentToString())
-                    // } catch (e: Exception) {
-                    //     e.printStackTrace()
-                    // } finally {
-                    //     dataOutputStream.close()
-                    //     outputStream.close()
-                    // }
-
-
                     audioHelper.stopAudioClassification()
                     
                     showButtons()
