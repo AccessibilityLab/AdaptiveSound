@@ -89,6 +89,7 @@ class AudioClassificationHelper(
         )
 
     private var rmsThreshold = 0.01f
+    private var isTraining = false
 
     private val classifyRunnable = Runnable {
         classifyAudio()
@@ -239,6 +240,11 @@ class AudioClassificationHelper(
         }
     }
 
+    // Check if it's training
+    fun isModelTraining(): Boolean {
+        return isTraining
+    }
+
     // Running the interpreter's signature function
     private fun trainOneStep(
         x: MutableList<FloatArray>, y: MutableList<FloatArray>
@@ -268,43 +274,10 @@ class AudioClassificationHelper(
         
         Log.d("AudioClassificationHelper","Start fine-tuning")
 
-        // trainingExecutor = Executors.newSingleThreadExecutor()
-
-        // trainingExecutor?.execute {
-        //     synchronized(lock) {
-        //         var avgLoss: Float
-        //         var numIterations = 0
-        //         while (trainingExecutor!!.isShutdown == false) {
-        //             var totalLoss = 0f
-        //             // training
-        //             dataBuffer.shuffle() // might not need to do this
-
-        //             val trainingBatchAudios =
-        //                 MutableList(BATCH_SIZE) { FloatArray(44100) }
-
-        //             val trainingBatchLabels =
-        //                 MutableList(BATCH_SIZE) { FloatArray(10) }
-
-        //             dataBuffer.forEachIndexed { index, sample ->
-        //                 trainingBatchAudios[index] = sample.audio
-        //                 trainingBatchLabels[index] = sample.label
-        //             }
-
-        //             val loss = trainOneStep(trainingBatchAudios,trainingBatchLabels)
-        //             numIterations++
-                    
-        //             totalLoss += loss
-                    
-        //             avgLoss = totalLoss / numIterations
-        //             handler.post {
-        //                 listener.onTrainResult(avgLoss, numIterations)
-        //             }      
-        //         }
-        //     }
-        // }
-        var avgLoss: Float
+        isTraining = true
+        var meanLoss: Float = 1000f
         var numIterations = 0
-        while (numIterations < 5) {
+        while (numIterations < 10 && meanLoss > 1) {
             var totalLoss = 0f
             // training
             dataBuffer.shuffle() // might not need to do this
@@ -328,12 +301,13 @@ class AudioClassificationHelper(
             
             totalLoss += loss
             
-            avgLoss = totalLoss / numIterations
+            meanLoss = loss
             handler.post {
                 listener.onTrainResult(loss, numIterations)
             }      
         }
         dataBuffer.clear()
+        isTraining = false
         val outfile: File = File(context.getFilesDir(), "sc_model.tflite")
         Log.d("AudioClassificationHelper",outfile.getAbsolutePath())
         val inputs: MutableMap<String, Any> = HashMap()
@@ -378,7 +352,7 @@ class AudioClassificationHelper(
         const val DEFAULT_OVERLAP_VALUE = 0.5f
         const val YAMNET_MODEL = "yamnet.tflite"
         const val SPEECH_COMMAND_MODEL = "speech.tflite"
-        const val BATCH_SIZE = 20
+        const val BATCH_SIZE = 10
     }
 
     data class TrainingSample(val audio: FloatArray, val label: FloatArray)

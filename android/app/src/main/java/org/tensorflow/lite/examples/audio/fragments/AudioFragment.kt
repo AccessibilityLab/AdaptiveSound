@@ -223,11 +223,14 @@ class AudioFragment : Fragment() {
     private fun correctButtonClicked(audio: FloatArray, lbl:FloatArray){
         //1. Show Dropdown of Possible Sounds
         Log.d("AudioFragment", "Correct Button Clicked")
-        audioHelper.collectSample(audio, lbl)
+        
+        if (audioHelper.isModelTraining() == false) {
+            audioHelper.collectSample(audio, lbl)
 
-        if (audioHelper.isBufferFull()) {
-            CoroutineScope(Dispatchers.Default).launch{
-                audioHelper.fineTuning()
+            if (audioHelper.isBufferFull()) {
+                CoroutineScope(Dispatchers.Default).launch{
+                    audioHelper.fineTuning()
+                }
             }
         }
         
@@ -291,10 +294,13 @@ class AudioFragment : Fragment() {
                 suretyScore = 4;
                 hideIncorrectView()
                 if (selectedItem != "Others") {
-                    audioHelper.collectSample(audio, arrayOf(lbl2idMap[selectedItem]!!.toFloat()).toFloatArray())
-                    if (audioHelper.isBufferFull()) {
-                        CoroutineScope(Dispatchers.Default).launch{
-                            audioHelper.fineTuning()
+                    if (audioHelper.isModelTraining() == false) {
+                        audioHelper.collectSample(audio, arrayOf(lbl2idMap[selectedItem]!!.toFloat()).toFloatArray())
+            
+                        if (audioHelper.isBufferFull()) {
+                            CoroutineScope(Dispatchers.Default).launch{
+                                audioHelper.fineTuning()
+                            }
                         }
                     }
                 }
@@ -306,10 +312,13 @@ class AudioFragment : Fragment() {
                 suretyScore = 5;
                 hideIncorrectView()
                 if (selectedItem != "Others") {
-                    audioHelper.collectSample(audio, arrayOf(lbl2idMap[selectedItem]!!.toFloat()).toFloatArray())
-                    if (audioHelper.isBufferFull()) {
-                        CoroutineScope(Dispatchers.Default).launch{
-                            audioHelper.fineTuning()
+                    if (audioHelper.isModelTraining() == false) {
+                        audioHelper.collectSample(audio, arrayOf(lbl2idMap[selectedItem]!!.toFloat()).toFloatArray())
+            
+                        if (audioHelper.isBufferFull()) {
+                            CoroutineScope(Dispatchers.Default).launch{
+                                audioHelper.fineTuning()
+                            }
                         }
                     }
                 }
