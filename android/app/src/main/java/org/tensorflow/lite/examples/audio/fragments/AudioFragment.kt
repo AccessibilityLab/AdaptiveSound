@@ -84,6 +84,8 @@ class AudioFragment : Fragment() {
 
                 if (output != "silence") {
                     audioHelper.stopAudioClassification()
+
+                    val z = 0
                     
                     showButtons()
                     correctButton.setOnClickListener {
