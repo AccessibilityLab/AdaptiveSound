@@ -17,6 +17,7 @@
 <navigation
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
     app:startDestination="@id/permissions_fragment">
 
@@ -38,12 +39,10 @@
         android:name="org.tensorflow.lite.examples.audio.fragments.AudioFragment"
         android:label="AudioFragment" >
 
-
         <action
             android:id="@+id/action_audio_to_permissions"
             app:destination="@id/permissions_fragment"
             app:popUpTo="@id/audio_fragment"
             app:popUpToInclusive="true"/>
-
     </fragment>
 </navigation>

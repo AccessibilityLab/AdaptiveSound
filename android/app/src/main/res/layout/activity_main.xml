@@ -37,7 +37,8 @@
         app:defaultNavHost="true"
         app:navGraph="@navigation/nav_graph"
         android:layout_marginTop="?android:attr/actionBarSize"
-        tools:context="org.tensorflow.lite.examples.audio.MainActivity"/>
+        tools:context="org.tensorflow.lite.examples.audio.MainActivity"
+        tools:layout="@layout/fragment_audio" />
 
     </RelativeLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -16,6 +16,7 @@
 
 package org.tensorflow.lite.examples.audio
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.media.AudioRecord
 import android.os.SystemClock
@@ -123,6 +124,7 @@ class AudioClassificationHelper(
         return rms
     }
 
+    @SuppressLint("MissingPermission")
     fun startAudioClassification() {
         val format = TensorAudio.TensorAudioFormat.builder()
             .setChannels(1)
@@ -195,6 +197,10 @@ class AudioClassificationHelper(
                 }
 
                 inferenceTime = SystemClock.uptimeMillis() - inferenceTime
+
+
+
+
                 listener.onResult(tensorAudio.getTensorBuffer().getFloatArray(),arrayOf(lbl[0].toFloat()).toFloatArray(),id2lblMap[lbl[0].toInt()].toString(), class_probs, inferenceTime)
             } 
             else { // no sound

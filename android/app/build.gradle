@@ -39,6 +39,7 @@ android {
     kotlinOptions {
         jvmTarget = rootProject.ext.java_version
     }
+    namespace 'org.tensorflow.lite.examples.audio'
 }
 
 // import DownloadModels task
@@ -62,7 +63,6 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
     implementation 'com.google.android.material:material:1.4.0'
-
 
     // Navigation library
     def nav_version = "2.3.5"
