@@ -20,6 +20,7 @@ package org.tensorflow.lite.examples.audio.fragments
 /* My own */
 
 import android.annotation.SuppressLint
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
@@ -43,11 +44,8 @@ import kotlinx.coroutines.launch
 import org.tensorflow.lite.examples.audio.AudioClassificationHelper
 import org.tensorflow.lite.examples.audio.R
 import org.tensorflow.lite.examples.audio.databinding.FragmentAudioBinding
-import java.sql.Time
 import java.util.SortedMap
-import java.util.Timer
 import kotlin.math.roundToInt
-import kotlin.concurrent.schedule
 
 
 /* End my own */
@@ -60,6 +58,7 @@ interface AudioClassificationListener {
 
 class AudioFragment : Fragment() {
 
+    //region Declarations
     private var dialogBoxShown = false
 
     private var _fragmentBinding: FragmentAudioBinding? = null
@@ -95,8 +94,11 @@ class AudioFragment : Fragment() {
 
     //Updating Page
     private lateinit var updatingLabel: TextView
-
     private var counter = 0
+
+    //Finetuing Global Variables
+    private lateinit var audioGlobal: FloatArray
+    private lateinit var lblGlobal: FloatArray
 
 
      private val lbl2idMap = mapOf<String, Int>( // I know there're better ways to do this, but...
@@ -125,17 +127,27 @@ class AudioFragment : Fragment() {
         9 to "Water Running"
     )
 
+    //endregion
 
+    //region AudioClassificationListener Methods
     private val audioClassificationListener = object : AudioClassificationListener {
         override fun onResult(audio: FloatArray, lbl: FloatArray, output: String, probs: FloatArray, inferenceTime: Long) {
-            if (output != "silence"){
-                Log.d("onResult", output)
 
+            //Clear Audio Buffer
+
+            if (output != "silence"){
+
+                Log.d("onResult", output)
                 audioHelper.stopAudioClassification()
+
+                audioGlobal = audio
+                lblGlobal = lbl
 
                 val probabilityMap = getProbabilityMap(probs)
 
                 requireActivity().runOnUiThread {
+                    //resultTextView.visibility = View.GONE
+
                     displayBottomSheet(probabilityMap)
                 }
             }
@@ -163,6 +175,9 @@ class AudioFragment : Fragment() {
         }
     }
 
+    //endregion
+
+    //region FragmentLifeCycle Methods
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -228,13 +243,21 @@ class AudioFragment : Fragment() {
         audioHelper.startAudioClassification()
     }
 
+    //endregion
+
+    //region Old Methods
     private fun incorrectButtonClicked(audio: FloatArray){
         //1. Show Dropdown of Possible Sounds
         Log.d("AudioFragment", "Incorrect Button Clicked")
     }
 
+    //endregion
+
+    //region Display Bottom Sheet
     private fun displayBottomSheet(probabilityMap: Map<String, Float>){
+
         counter++
+        Log.d("DialogBoxCounter", ""+counter)
 
         dialog = BottomSheetDialog(requireContext())
 
@@ -247,13 +270,11 @@ class AudioFragment : Fragment() {
         displayResults(probabilityMap)
 
 
-        //IN SCREEN 1
+
         thumbsUpButton.setOnClickListener(){
-            //LEO WRITE CORRECT FINE TUNING CODE HERE
+            fineTune("NONE", -1)
         }
         thumbsDownButton.setOnClickListener(){
-
-            //ASK LEO TO DO FINETUNING
 
             setupCorrectionViewWithData(probabilityMap)
 
@@ -266,11 +287,13 @@ class AudioFragment : Fragment() {
         dialog.setCancelable(false)
 
         //Help
-        resultTextView.text = ""
-        Log.d("Bottom Sheet", "Displayed " + counter + " time(s)")
+
         dialog.show()
     }
 
+    //endregion
+
+    //region Setup Views
     private fun setupCorrectionViewWithData(probabilityMap: Map<String, Float>){
         //Create an Array of Sounds
 
@@ -305,10 +328,50 @@ class AudioFragment : Fragment() {
         setupResultsPage(view)
         setupCorrectionPage(view)
         setupSuretyPage(view)
+        setupUpdatingView(view)
+    }
+
+    private fun setupUpdatingView(view: View){
+        updatingLabel = view.findViewById<TextView>(R.id.updating)
+        hideUpdatingPage()
     }
 
 
-    //Transition Functions
+    private fun setupResultsPage(view: View){
+        predictionLabel = view.findViewById<TextView>(R.id.predictionLabel)
+        confidenceLabel = view.findViewById<TextView>(R.id.confidenceLabel)
+        thumbsUpButton = view.findViewById<Button>(R.id.thumbsUpButton)
+        thumbsDownButton = view.findViewById<Button>(R.id.thumbsDownButton)
+        showResultsPage()
+    }
+    private fun setupCorrectionPage(view: View){
+        whatSoundLabel = view.findViewById<TextView>(R.id.whatSoundWasIt)
+        optBtnOne = view.findViewById<Button>(R.id.button)
+        optBtnTwo = view.findViewById<Button>(R.id.button3)
+        optBtnThree = view.findViewById<Button>(R.id.button4)
+        optBtnFour = view.findViewById<Button>(R.id.button5)
+        optBtnFive = view.findViewById<Button>(R.id.button6)
+        textInputLayout = view.findViewById<TextInputLayout>(R.id.tInputLayout)
+        autoCompleteTextView = view.findViewById<AutoCompleteTextView>(R.id.autoCompleteTextView)
+        setupDropdown()
+        hideCorrectionPage()
+    }
+    private fun setupSuretyPage(view: View){
+        suretyLabel = view.findViewById(R.id.howSureAreYou)
+        suretySlider = view.findViewById(R.id.slidee)
+        hideSuretyPage();
+    }
+
+
+    private fun setupDropdown(){
+        val arrayOfSounds = arrayOf("Cat Meow", "Car Honk", "Appliance Noise", "Dog Barking", "Other", "Whistling")
+        val arrayAdapter = ArrayAdapter(requireContext(), R.layout.dropdown_item, arrayOfSounds)
+        autoCompleteTextView.setAdapter(arrayAdapter)
+    }
+
+    //endregion
+
+    //region Transition Functions
     private fun transitionToCorrectionView(){
         hideResultsPage()
         showCorrectionPage()
@@ -340,11 +403,18 @@ class AudioFragment : Fragment() {
             }
     }
 
+    private fun transitionToUpdate(){
+        hideSuretyPage()
+        showUpdatingPage()
+    }
+
     private fun transitionToSuretyView(correctLabel: String){
         hideCorrectionPage()
         showSuretyPage()
         suretyListener(correctLabel)
     }
+
+    //endregion
 
     private fun suretyListener(correctLabel: String){
 
@@ -359,10 +429,6 @@ class AudioFragment : Fragment() {
 
             @SuppressLint("RestrictedApi")
             override fun onStopTrackingTouch(slider: RangeSlider) {
-                Log.d("Slider", "Stopped With Value" + zeVal)
-
-                //Transition To Finished Fragment
-                Log.d("FEEDBACK", correctLabel + " : " + zeVal)
 
                 fineTune(correctLabel, zeVal.toInt())
 
@@ -374,60 +440,41 @@ class AudioFragment : Fragment() {
             zeVal = value.toDouble()
         }
     }
-
-    //LEO WRITE FINETUNING CODE HERE
     private fun fineTune(correctLabel: String, surety: Int){
-        //Runs if incorrect...
-    }
+
+        if (surety == -1){
+            //Correct Sound
+            if(audioHelper.isModelTraining() == false){
+                audioHelper.collectSample(audioGlobal, lblGlobal)
+
+                if (audioHelper.isBufferFull()){
+                    CoroutineScope(Dispatchers.Default).launch {
+                        audioHelper.fineTuning()
+                    }
+                }
+            }
+        }
+        else if(surety == 4 || surety == 5){
+            //Incorrect Sound with high surety
+            if(correctLabel != "Other Sound"){
+                if (audioHelper.isModelTraining() == false) {
+                    audioHelper.collectSample(audioGlobal, arrayOf(lbl2idMap[correctLabel]!!.toFloat()).toFloatArray())
+                    if (audioHelper.isBufferFull()) {
+                        CoroutineScope(Dispatchers.Default).launch{
+                            audioHelper.fineTuning()
+                        }
+                    }
+                }
+            }
+        }
 
 
-    //Setup View Functions
-    private fun setupResultsPage(view: View){
-        predictionLabel = view.findViewById<TextView>(R.id.predictionLabel)
-        confidenceLabel = view.findViewById<TextView>(R.id.confidenceLabel)
-        thumbsUpButton = view.findViewById<Button>(R.id.thumbsUpButton)
-        thumbsDownButton = view.findViewById<Button>(R.id.thumbsDownButton)
-        showResultsPage()
-    }
-    private fun setupCorrectionPage(view: View){
-        whatSoundLabel = view.findViewById<TextView>(R.id.whatSoundWasIt)
-        optBtnOne = view.findViewById<Button>(R.id.button)
-        optBtnTwo = view.findViewById<Button>(R.id.button3)
-        optBtnThree = view.findViewById<Button>(R.id.button4)
-        optBtnFour = view.findViewById<Button>(R.id.button5)
-        optBtnFive = view.findViewById<Button>(R.id.button6)
-        textInputLayout = view.findViewById<TextInputLayout>(R.id.tInputLayout)
-        autoCompleteTextView = view.findViewById<AutoCompleteTextView>(R.id.autoCompleteTextView)
-        setupDropdown()
-        hideCorrectionPage()
-    }
-    private fun setupSuretyPage(view: View){
-        suretyLabel = view.findViewById(R.id.howSureAreYou)
-        suretySlider = view.findViewById(R.id.slidee)
-        hideSuretyPage();
+        dialog.dismiss()
+        Log.d("FineTuning", correctLabel + ": " + surety)
+        audioHelper.startAudioClassification()
     }
 
-    private fun setupUpdatingPage(view: View){
-        updatingLabel = view.findViewById(R.id.updating)
-        hideUpdating()
-    }
-
-    private fun hideUpdating(){
-        updatingLabel.visibility = View.GONE
-    }
-
-    private fun showUpdating(){
-        Log.d("Show Updating", "Shown")
-        updatingLabel.visibility = View.VISIBLE
-    }
-
-    private fun setupDropdown(){
-        val arrayOfSounds = arrayOf("Cat Meow", "Car Honk", "Appliance Noise", "Dog Barking", "Other", "Whistling")
-        val arrayAdapter = ArrayAdapter(requireContext(), R.layout.dropdown_item, arrayOfSounds)
-        autoCompleteTextView.setAdapter(arrayAdapter)
-    }
-
-    //Show and Hide Functions
+    //region Show and Hide Functions
     private fun hideResultsPage(){
         predictionLabel.visibility = View.GONE
         confidenceLabel.visibility = View.GONE
@@ -468,6 +515,16 @@ class AudioFragment : Fragment() {
         suretySlider.visibility = View.VISIBLE
     }
 
+    private fun hideUpdatingPage(){
+        updatingLabel.visibility = View.GONE
+    }
+
+    private fun showUpdatingPage(){
+        updatingLabel.visibility = View.GONE
+    }
+
+    //endregion
+
     private fun displayResults(data: Map<String, Float>){
         val firstEntry = data.entries.firstOrNull()
 
@@ -480,8 +537,6 @@ class AudioFragment : Fragment() {
             confidenceLabel.text = confidence.roundToInt().toString() + "% Sure"
         }
     }
-
-
 
     private fun getProbabilityMap(probs: FloatArray) : Map<String, Float>{
 

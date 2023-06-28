@@ -54,14 +54,14 @@ import org.tensorflow.lite.task.core.BaseOptions
 
 
 class AudioClassificationHelper(
-  val context: Context,
-  val listener: AudioClassificationListener,
-  var currentModel: String = YAMNET_MODEL,
-  var classificationThreshold: Float = DISPLAY_THRESHOLD,
-  var overlap: Float = DEFAULT_OVERLAP_VALUE,
-  var numOfResults: Int = DEFAULT_NUM_OF_RESULTS,
-  var currentDelegate: Int = 0,
-  var numThreads: Int = 2
+    val context: Context,
+    val listener: AudioClassificationListener,
+    var currentModel: String = YAMNET_MODEL,
+    var classificationThreshold: Float = DISPLAY_THRESHOLD,
+    var overlap: Float = DEFAULT_OVERLAP_VALUE,
+    var numOfResults: Int = DEFAULT_NUM_OF_RESULTS,
+    var currentDelegate: Int = 0,
+    var numThreads: Int = 2
 ) {
     private var interpreter: Interpreter? = null
     private lateinit var classifier: AudioClassifier
@@ -87,9 +87,10 @@ class AudioClassificationHelper(
         7 to "Knocking",
         8 to "Siren",
         9 to "Water Running"
-        )
+    )
 
     private var rmsThreshold = 0.01f
+    private var isTraining = false
 
     private val classifyRunnable = Runnable {
         classifyAudio()
@@ -148,9 +149,9 @@ class AudioClassificationHelper(
         // For example, YAMNET expects 0.975 second length recordings.
         // This needs to be in milliseconds to avoid the required Long value dropping decimals.
         // val lengthInMilliSeconds = ((classifier.requiredInputBufferSize * 1.0f) /
-                // classifier.requiredTensorAudioFormat.sampleRate) * 1000
+        // classifier.requiredTensorAudioFormat.sampleRate) * 1000
 
-        val lengthInMilliSeconds = 1000 // one second 
+        val lengthInMilliSeconds = 1000 // one second
 
         // val interval = (lengthInMilliSeconds * (1 - overlap)).toLong()
         val interval = (1000).toLong()
@@ -171,7 +172,7 @@ class AudioClassificationHelper(
             if (rms > rmsThreshold){ // TODO: the method to define the threshold for sound happening
                 val sr = recorder.getSampleRate()
                 var inferenceTime = SystemClock.uptimeMillis()
-                
+
                 val inputs: MutableMap<String, Any> = HashMap()
                 inputs["x"] = tensorAudio.getTensorBuffer().buffer
 
@@ -197,17 +198,13 @@ class AudioClassificationHelper(
                 }
 
                 inferenceTime = SystemClock.uptimeMillis() - inferenceTime
-
-
-
-
                 listener.onResult(tensorAudio.getTensorBuffer().getFloatArray(),arrayOf(lbl[0].toFloat()).toFloatArray(),id2lblMap[lbl[0].toInt()].toString(), class_probs, inferenceTime)
-            } 
+            }
             else { // no sound
                 listener.onResult(tensorAudio.getTensorBuffer().getFloatArray(),arrayOf(1f).toFloatArray(),"silence", floatArrayOf(0f), 0)
             }
         }
-        
+
     }
 
     fun stopAudioClassification() {
@@ -222,7 +219,7 @@ class AudioClassificationHelper(
         categoricalLabel[label.get(0).toInt()] = 1f
         return categoricalLabel
     }
-    
+
 
     // Add data to the data buffer
     fun collectSample(audio: FloatArray, label: FloatArray) {
@@ -243,6 +240,11 @@ class AudioClassificationHelper(
         } else {
             return true
         }
+    }
+
+    // Check if it's training
+    fun isModelTraining(): Boolean {
+        return isTraining
     }
 
     // Running the interpreter's signature function
@@ -271,46 +273,13 @@ class AudioClassificationHelper(
                 )
             )
         }
-        
+
         Log.d("AudioClassificationHelper","Start fine-tuning")
 
-        // trainingExecutor = Executors.newSingleThreadExecutor()
-
-        // trainingExecutor?.execute {
-        //     synchronized(lock) {
-        //         var avgLoss: Float
-        //         var numIterations = 0
-        //         while (trainingExecutor!!.isShutdown == false) {
-        //             var totalLoss = 0f
-        //             // training
-        //             dataBuffer.shuffle() // might not need to do this
-
-        //             val trainingBatchAudios =
-        //                 MutableList(BATCH_SIZE) { FloatArray(44100) }
-
-        //             val trainingBatchLabels =
-        //                 MutableList(BATCH_SIZE) { FloatArray(10) }
-
-        //             dataBuffer.forEachIndexed { index, sample ->
-        //                 trainingBatchAudios[index] = sample.audio
-        //                 trainingBatchLabels[index] = sample.label
-        //             }
-
-        //             val loss = trainOneStep(trainingBatchAudios,trainingBatchLabels)
-        //             numIterations++
-                    
-        //             totalLoss += loss
-                    
-        //             avgLoss = totalLoss / numIterations
-        //             handler.post {
-        //                 listener.onTrainResult(avgLoss, numIterations)
-        //             }      
-        //         }
-        //     }
-        // }
-        var avgLoss: Float
+        isTraining = true
+        var meanLoss: Float = 1000f
         var numIterations = 0
-        while (numIterations < 5) {
+        while (numIterations < 10 && meanLoss > 1) {
             var totalLoss = 0f
             // training
             dataBuffer.shuffle() // might not need to do this
@@ -331,15 +300,16 @@ class AudioClassificationHelper(
 
             val loss = trainOneStep(trainingBatchAudios,trainingBatchLabels)
             numIterations++
-            
+
             totalLoss += loss
-            
-            avgLoss = totalLoss / numIterations
+
+            meanLoss = loss
             handler.post {
                 listener.onTrainResult(loss, numIterations)
-            }      
+            }
         }
         dataBuffer.clear()
+        isTraining = false
         val outfile: File = File(context.getFilesDir(), "sc_model.tflite")
         Log.d("AudioClassificationHelper",outfile.getAbsolutePath())
         val inputs: MutableMap<String, Any> = HashMap()
@@ -372,7 +342,7 @@ class AudioClassificationHelper(
         // Log.d("AudioClassificationHelper",outfile.lastModified().toString())
     }
 
-    
+
 
     /* End of on-edge training */
 
@@ -384,7 +354,7 @@ class AudioClassificationHelper(
         const val DEFAULT_OVERLAP_VALUE = 0.5f
         const val YAMNET_MODEL = "yamnet.tflite"
         const val SPEECH_COMMAND_MODEL = "speech.tflite"
-        const val BATCH_SIZE = 20
+        const val BATCH_SIZE = 10
     }
 
     data class TrainingSample(val audio: FloatArray, val label: FloatArray)
