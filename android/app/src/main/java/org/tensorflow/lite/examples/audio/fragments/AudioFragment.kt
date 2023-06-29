@@ -38,6 +38,7 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.Navigation
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.slider.RangeSlider
+import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -103,6 +104,7 @@ class AudioFragment : Fragment() {
     private lateinit var lblGlobal: FloatArray
 
     private var isClicked = false
+    private var isShown = false
 
 
 
@@ -139,11 +141,10 @@ class AudioFragment : Fragment() {
     private val audioClassificationListener = object : AudioClassificationListener {
         override fun onResult(audio: FloatArray, lbl: FloatArray, output: String, probs: FloatArray, inferenceTime: Long) {
 
-            //Clear Audio Buffer
 
             if (output != "silence"){
 
-                Log.d("onResult", output)
+
                 audioHelper.stopAudioClassification()
 
                 audioGlobal = audio
@@ -151,14 +152,20 @@ class AudioFragment : Fragment() {
 
                 val probabilityMap = getProbabilityMap(probs)
 
+
                 requireActivity().runOnUiThread {
                     //resultTextView.visibility = View.GONE
-
-                    displayBottomSheet(probabilityMap)
+                    Log.d("On Result", "Prediction: " + output)
+                    Log.d("On Result", "Dialog Box Shown: " + isShown)
+                    if(!isShown){
+                        Log.d("On Result", "Calling Function Display Bottom Sheet")
+                        isShown = true
+                        displayBottomSheet(probabilityMap)
+                    }
                 }
             }
             else{
-                Log.d("onResult", "Silence")
+
             }
 
         }
@@ -201,7 +208,27 @@ class AudioFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+
         resultTextView = fragmentAudioBinding.root.findViewById(R.id.resultTextView)
+
+
+//        var fineTuneSwitch = fragmentAudioBinding.root.findViewById<SwitchMaterial>(R.id.FineTuneSwitch)
+//        fineTuneSwitch.isUseMaterialThemeColors = true
+//
+//        fineTuneSwitch.setOnCheckedChangeListener { buttonView, isChecked ->
+//            if (isChecked) {
+//                // Code to execute when the switch is checked
+//                // Example: Log a message
+//                Log.d("Switch", "Switch is checked")
+//            } else {
+//                // Code to execute when the switch is unchecked
+//                // Example: Log a message
+//                Log.d("Switch", "Switch is unchecked")
+//            }
+//        }
+
+
+
 
         audioHelper = AudioClassificationHelper(
             requireContext(),
@@ -224,7 +251,6 @@ class AudioFragment : Fragment() {
     }
 
     override fun onPause() {
-        Log.d("AudioFragment", "View is Paused")
         super.onPause()
         if (::audioHelper.isInitialized ) {
             audioHelper.stopAudioClassification()
@@ -235,35 +261,12 @@ class AudioFragment : Fragment() {
         _fragmentBinding = null
         super.onDestroyView()
     }
-    private fun correctButtonClicked(audio: FloatArray, lbl:FloatArray){
-        //1. Show Dropdown of Possible Sounds
-        Log.d("AudioFragment", "Correct Button Clicked")
-        audioHelper.collectSample(audio, lbl)
-
-        if (audioHelper.isBufferFull()) {
-            CoroutineScope(Dispatchers.Default).launch{
-                audioHelper.fineTuning()
-            }
-        }
-
-        audioHelper.startAudioClassification()
-    }
 
     //endregion
 
-    //region Old Methods
-    private fun incorrectButtonClicked(audio: FloatArray){
-        //1. Show Dropdown of Possible Sounds
-        Log.d("AudioFragment", "Incorrect Button Clicked")
-    }
-
-    //endregion
 
     //region Display Bottom Sheet
     private fun displayBottomSheet(probabilityMap: Map<String, Float>){
-
-        counter++
-        Log.d("DialogBoxCounter", ""+counter)
 
         dialog = BottomSheetDialog(requireContext())
 
@@ -422,10 +425,7 @@ class AudioFragment : Fragment() {
             }
     }
 
-    private fun transitionToUpdate(){
-        hideSuretyPage()
-        showUpdatingPage()
-    }
+
 
     private fun transitionToSuretyView(correctLabel: String){
         hideCorrectionPage()
@@ -449,6 +449,7 @@ class AudioFragment : Fragment() {
             @SuppressLint("RestrictedApi")
             override fun onStopTrackingTouch(slider: RangeSlider) {
 
+
                 fineTune(correctLabel, zeVal.toInt())
 
             }
@@ -460,7 +461,8 @@ class AudioFragment : Fragment() {
         }
     }
     private fun fineTune(correctLabel: String, surety: Int){
-
+        Log.d("FineTune", "Entered Fine Tuning Front-End")
+        Log.d("FineTune", "Dialog Box Shown: " + isShown)
         if (surety == -1){
             //Correct Sound
             if(audioHelper.isModelTraining() == false){
@@ -486,10 +488,19 @@ class AudioFragment : Fragment() {
                 }
             }
         }
+
+
         dialog.dismiss()
-        Log.d("FineTuning", correctLabel + ": " + surety)
+        Log.d("FineTune", "Dialog Box Dismissed")
+        isShown = false
+        Log.d("FineTune", "Dialog Box Shown: " + isShown)
+
+
+
+
         audioHelper.startAudioClassification()
     }
+
 
     //region Show and Hide Functions
     private fun hideResultsPage(){
@@ -586,6 +597,7 @@ class AudioFragment : Fragment() {
         )
         return lbl2idMap[index]
     }
+
 }
 
 

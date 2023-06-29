@@ -23,22 +23,24 @@
     android:layout_height="match_parent">
 
     <RelativeLayout
+        android:id="@+id/relativeLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-    <androidx.fragment.app.FragmentContainerView
-        android:id="@+id/fragment_container"
-        android:name="androidx.navigation.fragment.NavHostFragment"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@android:color/transparent"
-        android:keepScreenOn="true"
-        app:defaultNavHost="true"
-        app:navGraph="@navigation/nav_graph"
-        android:layout_marginTop="?android:attr/actionBarSize"
-        tools:context="org.tensorflow.lite.examples.audio.MainActivity"
-        tools:layout="@layout/fragment_audio" />
-
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/fragment_container"
+            android:name="androidx.navigation.fragment.NavHostFragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="?android:attr/actionBarSize"
+            android:background="@android:color/transparent"
+            android:keepScreenOn="true"
+            app:defaultNavHost="true"
+            app:navGraph="@navigation/nav_graph"
+            tools:context="org.tensorflow.lite.examples.audio.MainActivity"
+            tools:layout="@layout/fragment_audio" />
     </RelativeLayout>
+
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -47,8 +47,4 @@
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/colorful_sound_wave_equalizer_2" />
 
-
-
-    <!--tools:listitem="@layout/item_probability" is something you might want to add?-->
-
 </androidx.constraintlayout.widget.ConstraintLayout>
