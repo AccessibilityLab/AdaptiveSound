@@ -23,6 +23,7 @@ import android.annotation.SuppressLint
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -40,6 +41,7 @@ import com.google.android.material.slider.RangeSlider
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.launch
 import org.tensorflow.lite.examples.audio.AudioClassificationHelper
 import org.tensorflow.lite.examples.audio.R
@@ -99,6 +101,10 @@ class AudioFragment : Fragment() {
     //Finetuing Global Variables
     private lateinit var audioGlobal: FloatArray
     private lateinit var lblGlobal: FloatArray
+
+    private var isClicked = false
+
+
 
 
      private val lbl2idMap = mapOf<String, Int>( // I know there're better ways to do this, but...
@@ -272,23 +278,35 @@ class AudioFragment : Fragment() {
 
 
         thumbsUpButton.setOnClickListener(){
+            isClicked = true
             fineTune("NONE", -1)
         }
         thumbsDownButton.setOnClickListener(){
+
+            isClicked = true
 
             setupCorrectionViewWithData(probabilityMap)
 
             transitionToCorrectionView()
         }
 
-
-            //Correction Page
+        //Correction Page
         dialog.setContentView(view)
         dialog.setCancelable(false)
 
         //Help
 
         dialog.show()
+
+        //Delay for is user doesn't want to give feedback.
+        Handler(Looper.getMainLooper()).removeCallbacks(noResponseRunnable)
+        Handler(Looper.getMainLooper()).postDelayed(noResponseRunnable, 5000)
+    }
+
+    val noResponseRunnable = Runnable{
+        if(!isClicked){
+            fineTune("No Click", -2)
+        }
     }
 
     //endregion
@@ -338,6 +356,7 @@ class AudioFragment : Fragment() {
 
 
     private fun setupResultsPage(view: View){
+        isClicked
         predictionLabel = view.findViewById<TextView>(R.id.predictionLabel)
         confidenceLabel = view.findViewById<TextView>(R.id.confidenceLabel)
         thumbsUpButton = view.findViewById<Button>(R.id.thumbsUpButton)
@@ -467,8 +486,6 @@ class AudioFragment : Fragment() {
                 }
             }
         }
-
-
         dialog.dismiss()
         Log.d("FineTuning", correctLabel + ": " + surety)
         audioHelper.startAudioClassification()
@@ -482,6 +499,7 @@ class AudioFragment : Fragment() {
         thumbsUpButton.visibility = View.GONE
     }
     private fun showResultsPage(){
+        isClicked = false
         predictionLabel.visibility = View.VISIBLE
         confidenceLabel.visibility = View.VISIBLE
         thumbsDownButton.visibility = View.VISIBLE
