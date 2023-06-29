@@ -166,6 +166,8 @@ class AudioClassificationHelper(
     private fun classifyAudio() {
         tensorAudio.load(recorder) // 1, 15600(0.975*sr)
 
+
+
         synchronized(lock) {
             val rms = calculateRMS(tensorAudio.getTensorBuffer().getFloatArray())
             // Log.d("AudioClassificationHelper", "rms: " + rms)
