@@ -28,6 +28,8 @@
     <!-- Color for text and icons on the surface (background) -->
     <item name="colorOnSurface">@color/md_theme_light_onSurface</item>
 
+    <item name="colorSecondary">@color/md_theme_light_secondary</item>
+
 </style>
 
 <style name="BottomSheetSpinnerItemStyle" parent="Widget.AppCompat.Light.DropDownItem.Spinner">

@@ -20,7 +20,6 @@ package org.tensorflow.lite.examples.audio.fragments
 /* My own */
 
 import android.annotation.SuppressLint
-import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -105,6 +104,7 @@ class AudioFragment : Fragment() {
 
     private var isClicked = false
     private var isShown = false
+    private var userHasFineTuningEnabled = true
 
 
 
@@ -212,20 +212,22 @@ class AudioFragment : Fragment() {
         resultTextView = fragmentAudioBinding.root.findViewById(R.id.resultTextView)
 
 
-//        var fineTuneSwitch = fragmentAudioBinding.root.findViewById<SwitchMaterial>(R.id.FineTuneSwitch)
-//        fineTuneSwitch.isUseMaterialThemeColors = true
-//
-//        fineTuneSwitch.setOnCheckedChangeListener { buttonView, isChecked ->
-//            if (isChecked) {
-//                // Code to execute when the switch is checked
-//                // Example: Log a message
-//                Log.d("Switch", "Switch is checked")
-//            } else {
-//                // Code to execute when the switch is unchecked
-//                // Example: Log a message
-//                Log.d("Switch", "Switch is unchecked")
-//            }
-//        }
+        var fineTuneSwitch = fragmentAudioBinding.root.findViewById<SwitchMaterial>(R.id.switchFineTune)
+        fineTuneSwitch.isUseMaterialThemeColors = true
+
+        fineTuneSwitch.setOnCheckedChangeListener { buttonView, isChecked ->
+            if (isChecked) {
+                // Code to execute when the switch is checked
+                // Example: Log a message
+                userHasFineTuningEnabled = true
+                Log.d("Switch", "Switch is checked")
+            } else {
+                // Code to execute when the switch is unchecked
+                // Example: Log a message
+                userHasFineTuningEnabled = false
+                Log.d("Switch", "Switch is unchecked")
+            }
+        }
 
 
 
@@ -513,8 +515,14 @@ class AudioFragment : Fragment() {
         isClicked = false
         predictionLabel.visibility = View.VISIBLE
         confidenceLabel.visibility = View.VISIBLE
-        thumbsDownButton.visibility = View.VISIBLE
-        thumbsUpButton.visibility = View.VISIBLE
+        if(userHasFineTuningEnabled){
+            thumbsDownButton.visibility = View.VISIBLE
+            thumbsUpButton.visibility = View.VISIBLE
+        }
+        else{
+            thumbsDownButton.visibility = View.GONE
+            thumbsUpButton.visibility = View.GONE
+        }
     }
     private fun hideCorrectionPage(){
         whatSoundLabel.visibility = View.GONE
