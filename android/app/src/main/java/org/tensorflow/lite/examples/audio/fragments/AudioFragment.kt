@@ -61,13 +61,14 @@ interface AudioClassificationListener {
 class AudioFragment : Fragment() {
 
     //region Declarations
-    private var dialogBoxShown = false
+
+
 
     private var _fragmentBinding: FragmentAudioBinding? = null
     private val fragmentAudioBinding get() = _fragmentBinding!!
     private val handler = Handler()
     private lateinit var audioHelper: AudioClassificationHelper
-    private lateinit var resultTextView: TextView
+    private lateinit var listeningLabel: TextView
 
 
     private lateinit var dialog: BottomSheetDialog
@@ -98,12 +99,14 @@ class AudioFragment : Fragment() {
     private lateinit var updatingLabel: TextView
     private var counter = 0
 
-    //Finetuing Global Variables
+    //Fine-Tuning Global Variables
     private lateinit var audioGlobal: FloatArray
     private lateinit var lblGlobal: FloatArray
 
     private var isClicked = false
-    private var isShown = false
+
+    //Boolean Variable to keep track of dialogbox state - whether it is shown or not
+    private var dialogBoxIsShown = false
     private var userHasFineTuningEnabled = true
 
 
@@ -138,38 +141,67 @@ class AudioFragment : Fragment() {
     //endregion
 
     //region AudioClassificationListener Methods
+
+    //On Result Method - This Method gets triggered whenever the AudioClassificationHelper.kt
+    //makes a prediction based on audio sound
+
     private val audioClassificationListener = object : AudioClassificationListener {
         override fun onResult(audio: FloatArray, lbl: FloatArray, output: String, probs: FloatArray, inferenceTime: Long) {
 
+            //audio of type FloatArray is the audio file that was processed by the model
+            //I don't exactly know what lbl is (USED FOR RL)
+            //output is the string label of the most confident prediction of the model
+            //probs is FloatArray which deals with probabilities of different labels
+            //inference time i I don't exactly remember what it is
 
+            //If the Output is not silence, it is a valid prediction
             if (output != "silence"){
 
 
+                //Stop Classificying Audio -> Stops Listening for new sounds
                 audioHelper.stopAudioClassification()
 
+                //Updates the Global Audio Variable with the correct audio
                 audioGlobal = audio
+
+                //Updates the Global lbl variable with the correct lbl
                 lblGlobal = lbl
 
+                //Probability Map is a Map of <String, Float> where:
+                    //String is the audio class label i.e Knocking or Car Honk or Doorbell etc.
+                    //Float is the confidence of that prediction i.e 0.97 -> 97% confidence
                 val probabilityMap = getProbabilityMap(probs)
 
 
+                //From this point we have only UI - front end updates which need to be run on the
+                //UI thread to make sure low latency for front end
                 requireActivity().runOnUiThread {
-                    //resultTextView.visibility = View.GONE
+
+                    //Log Statements for Debugging
                     Log.d("On Result", "Prediction: " + output)
-                    Log.d("On Result", "Dialog Box Shown: " + isShown)
-                    if(!isShown){
+                    Log.d("On Result", "Dialog Box Shown: " + dialogBoxIsShown)
+
+                    //If Dialogbox is not shown (fix for a bug where dialog box shows twice)
+                    if(!dialogBoxIsShown){
+                        //Debug Statement
                         Log.d("On Result", "Calling Function Display Bottom Sheet")
-                        isShown = true
+
+                        //Mark DialogBox as Shown
+                        dialogBoxIsShown = true
+
+                        //Calls function to display Bottom Sheet (since we have a valid prediction)
                         displayBottomSheet(probabilityMap)
                     }
                 }
             }
             else{
-
+                //Debug Purposes
+                Log.d("On Result", "Silence is Prediction")
             }
 
         }
 
+        //On Train Result - Listener Method for RL (See AudioClassificationHelper.kt) for more
         override fun onTrainResult(loss: Float, numIter: Int) {
             Log.d("AudioFragment","loss: " + loss.toString())
             // if loss is lower than something, stop training
@@ -179,6 +211,7 @@ class AudioFragment : Fragment() {
             // }
         }
 
+        //On Error - Listener Method for RL (See AudioClassificationHelper.kt) for more
         override fun onError(error: String) {
             requireActivity().runOnUiThread {
                 Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
@@ -191,6 +224,8 @@ class AudioFragment : Fragment() {
     //endregion
 
     //region FragmentLifeCycle Methods
+
+    // onCreateView - See Fragment Lifecycles documentation - https://developer.android.com/guide/fragments/lifecycle
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -205,39 +240,43 @@ class AudioFragment : Fragment() {
         //return view
     }
 
+    //On View Created - See Fragment Lifecycles documentation - https://developer.android.com/guide/fragments/lifecycle
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        //Setup listeningLabel by linking it to element in fragment_audio.xml
+        listeningLabel = fragmentAudioBinding.root.findViewById(R.id.resultTextView)
 
-        resultTextView = fragmentAudioBinding.root.findViewById(R.id.resultTextView)
 
-
+        //Setup fineTuningSwitch Text View by linking it to element in fragment_audio.xml
+        //Fine Tuning Switch used to turn on and off fine tuning
         var fineTuneSwitch = fragmentAudioBinding.root.findViewById<SwitchMaterial>(R.id.switchFineTune)
+
+        //UI feature
         fineTuneSwitch.isUseMaterialThemeColors = true
 
+        //This On CheckedCgangeListener is triggered wheever the switch is clicked
         fineTuneSwitch.setOnCheckedChangeListener { buttonView, isChecked ->
             if (isChecked) {
-                // Code to execute when the switch is checked
-                // Example: Log a message
+                // Code to execute when the switch is checked - Fine tuning is On
                 userHasFineTuningEnabled = true
                 Log.d("Switch", "Switch is checked")
             } else {
-                // Code to execute when the switch is unchecked
-                // Example: Log a message
+                // Code to execute when the switch is unchecked - Fine tuning is off
                 userHasFineTuningEnabled = false
                 Log.d("Switch", "Switch is unchecked")
             }
         }
 
 
-
-
+        //AudioHelper Runnable - Not Sure What Exactly this is used for
         audioHelper = AudioClassificationHelper(
             requireContext(),
             audioClassificationListener
         )
     }
 
+    //More Lifecyle Methods - Need to figure out for 2nd version of App
     override fun onResume() {
         super.onResume()
         // Make sure that all permissions are still present, since the
@@ -252,6 +291,7 @@ class AudioFragment : Fragment() {
         }
     }
 
+    //More Lifecyle Methods - Need to figure out for 2nd version of App
     override fun onPause() {
         super.onPause()
         if (::audioHelper.isInitialized ) {
@@ -259,6 +299,7 @@ class AudioFragment : Fragment() {
         }
     }
 
+    //More Lifecyle Methods - Need to figure out for 2nd version of App
     override fun onDestroyView() {
         _fragmentBinding = null
         super.onDestroyView()
@@ -266,11 +307,15 @@ class AudioFragment : Fragment() {
 
     //endregion
 
-
     //region Display Bottom Sheet
+
+    //Display Bottom Sheet Method - Function that encapsulates displaying prediction information
+    //to the user
     private fun displayBottomSheet(probabilityMap: Map<String, Float>){
 
+        //setup our Bottom Sheet Dialog
         dialog = BottomSheetDialog(requireContext())
+
 
         val view=layoutInflater.inflate(R.layout.dialog_layout,null)
 
@@ -282,34 +327,48 @@ class AudioFragment : Fragment() {
 
 
 
+        //When FineTuning if the User Clicks the Thumbs up Button
         thumbsUpButton.setOnClickListener(){
+
+            //isClicked = true because feedback is given
             isClicked = true
             fineTune("NONE", -1)
         }
+
+        //When FineTuning if the User Clicks the Thumbs up Button
         thumbsDownButton.setOnClickListener(){
 
+            //isClicked = true because feedback is given
             isClicked = true
 
+            //If thumbs down selected -> user needs to fine tune model
+            //Correction View Setup
             setupCorrectionViewWithData(probabilityMap)
 
+            //Transition from Results View to Correction View
             transitionToCorrectionView()
         }
 
-        //Correction Page
+
         dialog.setContentView(view)
+
+        //Prevent User from Clikcing Out of the DialogBox
+        //-> prevents unnesecary start stop timing delays and bugs
         dialog.setCancelable(false)
-
-        //Help
-
         dialog.show()
 
         //Delay for is user doesn't want to give feedback.
+        //If the User Does not provide feedback within five seconds, run the noResponseRunnable
         Handler(Looper.getMainLooper()).removeCallbacks(noResponseRunnable)
         Handler(Looper.getMainLooper()).postDelayed(noResponseRunnable, 5000)
     }
 
+    //Runnable run if no response to prediction
     val noResponseRunnable = Runnable{
+
         if(!isClicked){
+            //If feedback is not given
+            //Calls fineTune method with a no click flag (i.e. feedback not given flag)
             fineTune("No Click", -2)
         }
     }
@@ -317,28 +376,50 @@ class AudioFragment : Fragment() {
     //endregion
 
     //region Setup Views
+
+    //Setup the (2nd View) Correction View with Data (different buttons and slider)
     private fun setupCorrectionViewWithData(probabilityMap: Map<String, Float>){
-        //Create an Array of Sounds
+
+        /*This Iteration of Adaptive Sound presents users with buttons as well as a drop down of
+        * different sounds the user can select from to pick the correct sound. Buttons are ordered
+        * in order of descending probability. I.E buttons with labels that had higher confidence are
+        * the top few buttons the user can select from to give feedback. This is the main reason
+        * behind large amounts of data processing in this function*/
+
+
 
         val LIMIT = 5
         var curr = 0
 
+        //A Button Array of the five buttons
         var buttonArray = arrayOf(optBtnOne, optBtnTwo, optBtnThree, optBtnFour, optBtnFive)
+
+        //Other Sounds that arn't displayed by the buttons to be displayed in the dropDown
         var othersArray = emptyArray<String>()
 
         //Update Button Text
+        //Yes this is a map, and yes we are looping through it using a for loop
+        //This map is ordered -> for more info look at the function getProbabilityMap
+
         for (item in probabilityMap){
-            if(curr != 0){ //Skip first item in list
+            if(curr != 0){ //Skip first item in list because item at index 0 is
+                // the main prediction which the user has already seen
                 if(curr <= LIMIT){
                     buttonArray[curr-1].text = item.key
+                    //Set buttonArray[0] to label at probaMap[1] and so until we hit out limit of 5
+                    //buttons
                 }
                 else{
                     othersArray += item.key
+                    //If we can't populate our buttons anymore,
+                    // add the labels to the other sounds array
                 }
             }
             curr++
+            //increment curr
         }
 
+        //Add the Other Sound option in case the actual sound wasn't any of our provided sounds.
         othersArray += "Other Sound"
 
         //Update Dropdown Options
@@ -347,6 +428,8 @@ class AudioFragment : Fragment() {
 
     }
 
+
+    //TODO: Finish Commenting The Following Functions Down Below
     private fun setupView(view: View){
         setupResultsPage(view)
         setupCorrectionPage(view)
@@ -464,7 +547,7 @@ class AudioFragment : Fragment() {
     }
     private fun fineTune(correctLabel: String, surety: Int){
         Log.d("FineTune", "Entered Fine Tuning Front-End")
-        Log.d("FineTune", "Dialog Box Shown: " + isShown)
+        Log.d("FineTune", "Dialog Box Shown: " + dialogBoxIsShown)
         if (surety == -1){
             //Correct Sound
             if(audioHelper.isModelTraining() == false){
@@ -494,8 +577,8 @@ class AudioFragment : Fragment() {
 
         dialog.dismiss()
         Log.d("FineTune", "Dialog Box Dismissed")
-        isShown = false
-        Log.d("FineTune", "Dialog Box Shown: " + isShown)
+        dialogBoxIsShown = false
+        Log.d("FineTune", "Dialog Box Shown: " + dialogBoxIsShown)
 
 
 
