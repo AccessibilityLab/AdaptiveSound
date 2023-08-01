@@ -430,6 +430,8 @@ class AudioFragment : Fragment() {
 
 
     //TODO: Finish Commenting The Following Functions Down Below
+
+    //Setup view sets up the dialog box by setting up all the smaller views compposed within it
     private fun setupView(view: View){
         setupResultsPage(view)
         setupCorrectionPage(view)
@@ -437,20 +439,26 @@ class AudioFragment : Fragment() {
         setupUpdatingView(view)
     }
 
+    //Updating View is something that was in development but is probably canned
     private fun setupUpdatingView(view: View){
         updatingLabel = view.findViewById<TextView>(R.id.updating)
         hideUpdatingPage()
     }
 
 
+    //Sets up results page by linking all ui to the fragment_audio.xml
     private fun setupResultsPage(view: View){
         isClicked
         predictionLabel = view.findViewById<TextView>(R.id.predictionLabel)
         confidenceLabel = view.findViewById<TextView>(R.id.confidenceLabel)
         thumbsUpButton = view.findViewById<Button>(R.id.thumbsUpButton)
         thumbsDownButton = view.findViewById<Button>(R.id.thumbsDownButton)
+
+        //Since results page is first we have its elements shown and not hidden
         showResultsPage()
     }
+
+    //Sets up correction page page by linking all ui to the fragment_audio.xml
     private fun setupCorrectionPage(view: View){
         whatSoundLabel = view.findViewById<TextView>(R.id.whatSoundWasIt)
         optBtnOne = view.findViewById<Button>(R.id.button)
@@ -460,17 +468,27 @@ class AudioFragment : Fragment() {
         optBtnFive = view.findViewById<Button>(R.id.button6)
         textInputLayout = view.findViewById<TextInputLayout>(R.id.tInputLayout)
         autoCompleteTextView = view.findViewById<AutoCompleteTextView>(R.id.autoCompleteTextView)
+
+        //Sets up the dropdown menu
         setupDropdown()
+
+        //Since correction page is not first, we hide it on setup
         hideCorrectionPage()
     }
+
+    //Sets up surety page page by linking all ui to the fragment_audio.xml
     private fun setupSuretyPage(view: View){
         suretyLabel = view.findViewById(R.id.howSureAreYou)
         suretySlider = view.findViewById(R.id.slidee)
+
+        //Since surety page is not first, we hide it on setup
         hideSuretyPage();
     }
 
 
+    //Sets up the dropdown menu
     private fun setupDropdown(){
+        //Temporary array - never actually used
         val arrayOfSounds = arrayOf("Cat Meow", "Car Honk", "Appliance Noise", "Dog Barking", "Other", "Whistling")
         val arrayAdapter = ArrayAdapter(requireContext(), R.layout.dropdown_item, arrayOfSounds)
         autoCompleteTextView.setAdapter(arrayAdapter)
@@ -479,10 +497,17 @@ class AudioFragment : Fragment() {
     //endregion
 
     //region Transition Functions
+
+    //Transitions to the Correction View from the Results Page
     private fun transitionToCorrectionView(){
+        //Hide Results page since we no longer need it
         hideResultsPage()
+
+        //Show elements of the correction page
         showCorrectionPage()
 
+        //Listeners with all the buttons for different labels
+        //They all transition to the Surety view with the correct sound label as a string
         optBtnOne.setOnClickListener(){
             transitionToSuretyView(optBtnOne.text as String)
         }
@@ -503,6 +528,8 @@ class AudioFragment : Fragment() {
             transitionToSuretyView(optBtnFive.text as String)
         }
 
+        //If we select a sound from the dropdown and not a button we still transition with that
+        //correct sound as a string to the suretyView
         autoCompleteTextView.onItemClickListener =
             OnItemClickListener { parent, view, position, rowId ->
                 val selection = parent.getItemAtPosition(position) as String
@@ -512,18 +539,28 @@ class AudioFragment : Fragment() {
 
 
 
+    //This function takes in a correct label string (which is the user selected correct label)
+    //for feedback purposes
     private fun transitionToSuretyView(correctLabel: String){
+        //1. Hide Correction Page
         hideCorrectionPage()
+
+        //2. Show Surety Page
         showSuretyPage()
+
+        //3. Calls a function with the correct label
         suretyListener(correctLabel)
     }
 
     //endregion
 
+    //This suretyListener function handles processing of the correct label
     private fun suretyListener(correctLabel: String){
 
-        var zeVal: Double = 0.0
+        //Initializing the double that holds the suretyValue
+        var suretyValue: Double = 0.0
 
+        //SliderTouchListener that runs when slider is changed
         suretySlider.addOnSliderTouchListener(object : RangeSlider.OnSliderTouchListener {
 
             @SuppressLint("RestrictedApi")
@@ -533,40 +570,68 @@ class AudioFragment : Fragment() {
 
             @SuppressLint("RestrictedApi")
             override fun onStopTrackingTouch(slider: RangeSlider) {
+                //Responds when slider's touch event has stopped i.e. the user has let go of the
+                //surety slider
 
-
-                fineTune(correctLabel, zeVal.toInt())
+                //calls the fineTune method with the correct label and its surety
+                fineTune(correctLabel, suretyValue.toInt())
 
             }
         })
 
+        //On change listener runs whenever surety slider has changed
         suretySlider.addOnChangeListener { rangeSlider, value, fromUser ->
             // Responds to when slider's value is changed
-            zeVal = value.toDouble()
+            //updates the suretyValue based on the slider's value
+            suretyValue = value.toDouble()
         }
     }
+
+    //FINE TUNING FUNCTION - VERY IMPORTANT
     private fun fineTune(correctLabel: String, surety: Int){
+        //Log Statements for Debugging
         Log.d("FineTune", "Entered Fine Tuning Front-End")
         Log.d("FineTune", "Dialog Box Shown: " + dialogBoxIsShown)
+
+        //Upadte model based on different surety values
         if (surety == -1){
-            //Correct Sound
+            //Correct Sound - We set this in the thumbs up clicked listener above
+
+            //If the model is not training
             if(audioHelper.isModelTraining() == false){
+
+                //collect the sample (correct audio and lbl variables)
                 audioHelper.collectSample(audioGlobal, lblGlobal)
 
+
+
                 if (audioHelper.isBufferFull()){
+                    //If the buffer is full
+
+                    //Not done on the main thread to prevent UI freezing
                     CoroutineScope(Dispatchers.Default).launch {
+                        //Start Fine Tuning
                         audioHelper.fineTuning()
                     }
                 }
             }
         }
         else if(surety == 4 || surety == 5){
-            //Incorrect Sound with high surety
+            //Incorrect Sound with high surety - Only fine tune when the user is very sure
+            //of correct sound
             if(correctLabel != "Other Sound"){
+                //This means that the label is a provided sound
                 if (audioHelper.isModelTraining() == false) {
+                    //If the model is not training
+
+                    //collect the sample
                     audioHelper.collectSample(audioGlobal, arrayOf(lbl2idMap[correctLabel]!!.toFloat()).toFloatArray())
+
+
                     if (audioHelper.isBufferFull()) {
+                        //if the buffer is full
                         CoroutineScope(Dispatchers.Default).launch{
+                            //fine tune
                             audioHelper.fineTuning()
                         }
                     }
@@ -575,29 +640,43 @@ class AudioFragment : Fragment() {
         }
 
 
+        //Feedback is given and fine tuning is taken care of so we can dismiss the dialogbox
         dialog.dismiss()
+
+        //Log statement for debugging
         Log.d("FineTune", "Dialog Box Dismissed")
+
+        //Update the state variable
         dialogBoxIsShown = false
+
+        //Log statement for debuggin
         Log.d("FineTune", "Dialog Box Shown: " + dialogBoxIsShown)
 
-
-
-
+        //Restart Audio Classification and Listening for New Sounds
         audioHelper.startAudioClassification()
     }
 
 
     //region Show and Hide Functions
+
+    //Hides all elements in results page
     private fun hideResultsPage(){
         predictionLabel.visibility = View.GONE
         confidenceLabel.visibility = View.GONE
         thumbsDownButton.visibility = View.GONE
         thumbsUpButton.visibility = View.GONE
     }
+
+    //Shows all elements in results page
     private fun showResultsPage(){
+
+        //Button reset to its initial stage of false
         isClicked = false
+
         predictionLabel.visibility = View.VISIBLE
         confidenceLabel.visibility = View.VISIBLE
+
+        //Show Thumbs up and Thumbs down buttons only if fine-tuning is turned on by user
         if(userHasFineTuningEnabled){
             thumbsDownButton.visibility = View.VISIBLE
             thumbsUpButton.visibility = View.VISIBLE
@@ -607,6 +686,8 @@ class AudioFragment : Fragment() {
             thumbsUpButton.visibility = View.GONE
         }
     }
+
+    //Hides all elements in correction page
     private fun hideCorrectionPage(){
         whatSoundLabel.visibility = View.GONE
         optBtnOne.visibility = View.GONE
@@ -617,6 +698,8 @@ class AudioFragment : Fragment() {
         textInputLayout.visibility = View.GONE
 
     }
+
+    //Shows all elements in correction page
     private fun showCorrectionPage(){
         whatSoundLabel.visibility = View.VISIBLE
         optBtnOne.visibility = View.VISIBLE
@@ -626,53 +709,97 @@ class AudioFragment : Fragment() {
         optBtnFive.visibility = View.VISIBLE
         textInputLayout.visibility = View.VISIBLE
     }
+
+    //Hides all elements in surety page
     private fun hideSuretyPage(){
         suretyLabel.visibility = View.GONE
         suretySlider.visibility = View.GONE
     }
+
+    //shows all elements in surety page
     private fun showSuretyPage(){
         suretyLabel.visibility = View.VISIBLE
         suretySlider.visibility = View.VISIBLE
     }
 
+    //Hides all elements in updating page -> which is canned
     private fun hideUpdatingPage(){
         updatingLabel.visibility = View.GONE
     }
 
+    //Shows all elements in updating page -> which is canned
     private fun showUpdatingPage(){
         updatingLabel.visibility = View.GONE
     }
 
     //endregion
 
+
+
+    //Updates values on the results page using the data map <String, Float>
     private fun displayResults(data: Map<String, Float>){
         val firstEntry = data.entries.firstOrNull()
 
+
         if (firstEntry != null) {
+            //If the first entry is not null(which it should never be),
+            // output is the key and confidence is the value
             val output = firstEntry.key
             var confidence = firstEntry.value
 
+            //Set prediction label text to output
             predictionLabel.text = output
+
+            //Update confidence to become percentage i.e 0.87 => 87%
             confidence*=100
+
+            //Update confidence label text
             confidenceLabel.text = confidence.roundToInt().toString() + "% Sure"
         }
     }
 
+
+    //Uses the Float Array from the AudioFragment.kt
     private fun getProbabilityMap(probs: FloatArray) : Map<String, Float>{
 
+
+        /*Probs is something like this
+        * [0] -> 0.17
+        * [1] -> 0.83
+        * [2] -> 0.001 etc. etc.
+        *
+        * where this key binding is followed 0 -> Appliances, 1 -> Baby Cry etc. look at lbl2idmap
+        *
+        *
+        * So, essentially each index is a preset label and value is its confidence*/
+
+        //Create an empty sorted map
         var sortedMap: SortedMap<String, Float> = sortedMapOf()
 
         var index = 0
+
+        //For each probability in the probs array
         for (probability in probs){
+
+            //Get the associated label
             val label = getLabelFromIndex(index)
+
+            //Set the probability of that label to the probability in the map
             sortedMap[label] = probability
+
+            //imcrememt index
             index++
         }
 
+        //Sort the values in the map by descending order of probability
         val sortedByValueMap = sortedMap.toList().sortedByDescending { (_, value) -> value }.toMap()
+
+        //Return the beautiful sortedByValueMap
         return sortedByValueMap
     }
 
+
+    //Helper function that returns the label of the given index
     private fun getLabelFromIndex(index: Int) : String? {
         val lbl2idMap = mapOf<Int, String>( // I know there're better ways to do this, but...
             0 to "Appliances",
@@ -688,7 +815,10 @@ class AudioFragment : Fragment() {
         )
         return lbl2idMap[index]
     }
-
 }
+
+//And that's it for this extremly long file that is AudioFragment.kt
+// Hopefully these comments have been helpful
+// If you are stuck understanding some code please reach out to hridayc@umich.edu
 
 
