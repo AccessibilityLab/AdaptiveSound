@@ -60,6 +60,7 @@ import java.util.ArrayList
 import java.util.Date
 import java.util.SortedMap
 import kotlin.concurrent.timer
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 
@@ -72,6 +73,8 @@ interface AudioClassificationListener {
     fun onError(error: String)
     fun onResult(audio: FloatArray, lbl: FloatArray, output: String, probs: FloatArray, inferenceTime: Long)
     fun onTrainResult(loss: Float, numIter: Int)
+
+    fun drawWaveform(audio: FloatArray)
 
 
 }
@@ -177,6 +180,56 @@ class AudioFragment : Fragment(),  Timer.OnTimerTickListener{
     //makes a prediction based on audio sound
 
     private val audioClassificationListener = object : AudioClassificationListener {
+
+
+        override fun drawWaveform(audio: FloatArray) {
+            //TODO("Not yet implemented")
+            Log.d("AudioFragment.kt", "DrawWaveForm Called")
+
+            //do the math and calculate how to draw the waveform
+
+            //How many spikes can be drawn?
+            //Screen Width = 300f
+            //Spike Width = 7.5f
+            //Distance between spikes = 6
+            //Total Num Spikes = 300/(7.5 + 6) => 22.22 spikes
+
+            //So 22 spikes approx it to 20 spikes
+            //44100 -> Split into 20 spikes is approx a smaler buffer of size 2205
+            //Repeat 20 Times
+                //Find Max in Buffer from 0 - 2204, 2205-4409. 4410-6615 ...
+            //Should have an array list of 20 values
+            //Let's test out?
+
+            //MAYBE DELETE ALL OF THIS
+            var arrayListOfAmplitdues = ArrayList<Float>()
+            var start = 0
+            var end = 2204
+            for(i in 1..20){
+                var maxAmplitude: Float = -1f
+                for(i in start..end){
+                    val currentAmplitude = Math.abs(audio[i])
+                    if(currentAmplitude > maxAmplitude){
+                        maxAmplitude = currentAmplitude
+                    }
+                }
+                arrayListOfAmplitdues.add(maxAmplitude)
+                start = end+1
+                end = end+2205
+            }
+
+            var counter = 0
+            var stringArray = ""
+            for(amplitude in arrayListOfAmplitdues){
+                //Log.d("Amplitude Checker", "[${counter}] -> ${amplitude}")
+                stringArray += "${amplitude}, "
+            }
+            Log.d("Google Sheets: ", stringArray)
+
+            //
+            waveformView.drawSingleWaveForm(arrayListOfAmplitdues)
+        }
+
 
         override fun onResult(
             audio: FloatArray,
@@ -914,20 +967,18 @@ class AudioFragment : Fragment(),  Timer.OnTimerTickListener{
         var maxAmplitude = recorder.maxAmplitude.toFloat()
 
         //Update Waveform View once created over here
-        waveformView.addAmplitude(maxAmplitude)
+        //waveformView.addAmplitude(maxAmplitude)
     }
 
+    //Strat for developing the new static but dynamic waveform
+    // 1. See using Log Statements if the line under tensor.loadAudio in startClassification is called multiple times and how often
+    //DONE Pretty Often
+    // 2. If it is called repeatedly, use a listener to call the drawWaveformsFunction
+    // //Called this
+    // 3. Modify the drawWaveform function using diff metrics (1 calculate how many spikes can be shown,
+    //then see how to divide the 44100 over those many spikes) and then draw them using same function or similar function
 
 }
-
-
-
-
-
-
-
-
-
 
 
 //And that's it for this extremly long file that is AudioFragment.kt

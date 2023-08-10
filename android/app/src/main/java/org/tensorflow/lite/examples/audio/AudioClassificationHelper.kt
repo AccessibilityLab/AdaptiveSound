@@ -42,6 +42,7 @@ import java.nio.LongBuffer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
+import kotlin.math.log
 
 
 class AudioClassificationHelper(
@@ -193,6 +194,8 @@ class AudioClassificationHelper(
     private fun classifyAudio() {
         tensorAudio.load(recorder) // 1, 15600(0.975*sr)
 
+        //Call the Listener to Draw the Waveform
+        listener.drawWaveform(tensorAudio.tensorBuffer.floatArray)
 
         //listener.getMaxAmplitudeArray(tensorAudio.getTensorBuffer().getFloatArray())
         //Log.d("AudioClassificationHelper", "Sent Waveform Audio to Buffer")

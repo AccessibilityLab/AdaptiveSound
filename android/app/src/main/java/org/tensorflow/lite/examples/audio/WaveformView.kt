@@ -21,6 +21,8 @@ class WaveformView(context: Context?, attrs: AttributeSet?) : View(context, attr
     private var amplitudes = ArrayList<Float>()
     private var spikes = ArrayList<RectF>()
 
+    private var newSpikes = ArrayList<RectF>()
+
     private var radius = 6f
     private var spikeWidth = 7.5f
     private var distanceBetweenSpikes = 6f
@@ -77,13 +79,44 @@ class WaveformView(context: Context?, attrs: AttributeSet?) : View(context, attr
         invalidate()
     }
 
+    fun drawSingleWaveForm(ampArray: ArrayList<Float>){
+        //Float Array will be of size 20
+        newSpikes.clear()
+
+        for(i in ampArray.indices){
+            //i is the amplitide index
+            //create a rect
+            //var left = screenWidth - (i*(spikeWidth+distanceBetweenSpikes))
+            var left = (i*distanceBetweenSpikes) + ((i-1)*spikeWidth)
+            //screenHeigh/2 => center line
+            var top = (screenHeight/2)  - ampArray[i]/2
+            //amps[i]/2 is half of height of of rectangle
+            var right = left + spikeWidth
+            //bottom = height of waveform which is amplitude
+            var bottom = top + (ampArray[i]*1000) //times10 is arb
+
+            newSpikes.add(RectF(left, top, right, bottom))
+
+            invalidate()
+        }
+
+        //Create a rect from all the spikes in ampArray
+
+    }
+
     override fun draw(canvas: Canvas?) {
         super.draw(canvas)
 
         //Do something snazzy with the pain
-        spikes.forEach{
+//        spikes.forEach{
+//            canvas?.drawRoundRect(it, radius, radius, paint)
+//        }
+
+        //
+        newSpikes.forEach{
             canvas?.drawRoundRect(it, radius, radius, paint)
         }
+
         //spikes.clear()
     }
 
