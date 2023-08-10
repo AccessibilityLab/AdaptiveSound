@@ -73,6 +73,7 @@ class WaveformView(context: Context?, attrs: AttributeSet?) : View(context, attr
         //Draw is only called once on creation
         //add amplitude needs to call it each time it is called though
         //this is done with the following method
+
         invalidate()
     }
 
