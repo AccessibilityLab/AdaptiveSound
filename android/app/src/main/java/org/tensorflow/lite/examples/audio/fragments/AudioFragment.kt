@@ -20,9 +20,13 @@ package org.tensorflow.lite.examples.audio.fragments
 /* My own */
 
 import android.annotation.SuppressLint
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore.Audio.Media
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -33,6 +37,7 @@ import android.widget.AutoCompleteTextView
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
 import androidx.navigation.Navigation
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -45,9 +50,20 @@ import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.launch
 import org.tensorflow.lite.examples.audio.AudioClassificationHelper
 import org.tensorflow.lite.examples.audio.R
+import org.tensorflow.lite.examples.audio.Timer
+import org.tensorflow.lite.examples.audio.WaveformView
 import org.tensorflow.lite.examples.audio.databinding.FragmentAudioBinding
+import java.io.IOException
+import java.sql.Time
+import java.text.SimpleDateFormat
+import java.util.ArrayList
+import java.util.Date
 import java.util.SortedMap
+import kotlin.concurrent.timer
 import kotlin.math.roundToInt
+
+
+
 
 
 /* End my own */
@@ -56,9 +72,11 @@ interface AudioClassificationListener {
     fun onError(error: String)
     fun onResult(audio: FloatArray, lbl: FloatArray, output: String, probs: FloatArray, inferenceTime: Long)
     fun onTrainResult(loss: Float, numIter: Int)
+
+
 }
 
-class AudioFragment : Fragment() {
+class AudioFragment : Fragment(),  Timer.OnTimerTickListener{
 
     //region Declarations
 
@@ -69,7 +87,6 @@ class AudioFragment : Fragment() {
     private val handler = Handler()
     private lateinit var audioHelper: AudioClassificationHelper
     private lateinit var listeningLabel: TextView
-
 
     private lateinit var dialog: BottomSheetDialog
 
@@ -110,6 +127,20 @@ class AudioFragment : Fragment() {
     private var userHasFineTuningEnabled = true
 
 
+    private lateinit var mediaRecorder: MediaRecorder
+
+    private var dirPath = ""
+    private var fileName = ""
+
+    //MediaRecorder for Waveform View
+    private lateinit var recorder: MediaRecorder
+    private var isRecording = false
+
+    private lateinit var timer: Timer
+
+    private lateinit var waveformView: WaveformView
+
+
 
 
      private val lbl2idMap = mapOf<String, Int>( // I know there're better ways to do this, but...
@@ -146,7 +177,16 @@ class AudioFragment : Fragment() {
     //makes a prediction based on audio sound
 
     private val audioClassificationListener = object : AudioClassificationListener {
-        override fun onResult(audio: FloatArray, lbl: FloatArray, output: String, probs: FloatArray, inferenceTime: Long) {
+
+        override fun onResult(
+            audio: FloatArray,
+            lbl: FloatArray,
+            output: String,
+            probs: FloatArray,
+            inferenceTime: Long
+        ) {
+            //Stop The Media Recorder
+
 
             //audio of type FloatArray is the audio file that was processed by the model
             //I don't exactly know what lbl is (USED FOR RL)
@@ -155,8 +195,8 @@ class AudioFragment : Fragment() {
             //inference time i I don't exactly remember what it is
 
             //If the Output is not silence, it is a valid prediction
-            if (output != "silence"){
-
+            if (output != "silence") {
+                stopRecording()
 
                 //Stop Classificying Audio -> Stops Listening for new sounds
                 audioHelper.stopAudioClassification()
@@ -164,12 +204,14 @@ class AudioFragment : Fragment() {
                 //Updates the Global Audio Variable with the correct audio
                 audioGlobal = audio
 
+
+
                 //Updates the Global lbl variable with the correct lbl
                 lblGlobal = lbl
 
                 //Probability Map is a Map of <String, Float> where:
-                    //String is the audio class label i.e Knocking or Car Honk or Doorbell etc.
-                    //Float is the confidence of that prediction i.e 0.97 -> 97% confidence
+                //String is the audio class label i.e Knocking or Car Honk or Doorbell etc.
+                //Float is the confidence of that prediction i.e 0.97 -> 97% confidence
                 val probabilityMap = getProbabilityMap(probs)
 
 
@@ -182,7 +224,7 @@ class AudioFragment : Fragment() {
                     Log.d("On Result", "Dialog Box Shown: " + dialogBoxIsShown)
 
                     //If Dialogbox is not shown (fix for a bug where dialog box shows twice)
-                    if(!dialogBoxIsShown){
+                    if (!dialogBoxIsShown) {
                         //Debug Statement
                         Log.d("On Result", "Calling Function Display Bottom Sheet")
 
@@ -193,8 +235,7 @@ class AudioFragment : Fragment() {
                         displayBottomSheet(probabilityMap)
                     }
                 }
-            }
-            else{
+            } else {
                 //Debug Purposes
                 Log.d("On Result", "Silence is Prediction")
             }
@@ -203,7 +244,7 @@ class AudioFragment : Fragment() {
 
         //On Train Result - Listener Method for RL (See AudioClassificationHelper.kt) for more
         override fun onTrainResult(loss: Float, numIter: Int) {
-            Log.d("AudioFragment","loss: " + loss.toString())
+            Log.d("AudioFragment", "loss: " + loss.toString())
             // if loss is lower than something, stop training
             // if (loss < 0.01 || numIter > 5) {
             //     audioHelper.stopTraining()
@@ -219,8 +260,8 @@ class AudioFragment : Fragment() {
                 //adapter.notifyDataSetChanged()
             }
         }
-    }
 
+    }
     //endregion
 
     //region FragmentLifeCycle Methods
@@ -241,12 +282,13 @@ class AudioFragment : Fragment() {
     }
 
     //On View Created - See Fragment Lifecycles documentation - https://developer.android.com/guide/fragments/lifecycle
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+
         //Setup listeningLabel by linking it to element in fragment_audio.xml
         listeningLabel = fragmentAudioBinding.root.findViewById(R.id.resultTextView)
-
 
         //Setup fineTuningSwitch Text View by linking it to element in fragment_audio.xml
         //Fine Tuning Switch used to turn on and off fine tuning
@@ -268,12 +310,25 @@ class AudioFragment : Fragment() {
             }
         }
 
+        //This is the Entry Point to the App
+        //WOOOO I FOUND IT I FOUND IT
 
-        //AudioHelper Runnable - Not Sure What Exactly this is used for
+        Log.d("AudioFragment.kt", "Entry Point 1")
+
+
         audioHelper = AudioClassificationHelper(
             requireContext(),
             audioClassificationListener
         )
+
+
+        //Initialize Timer Object
+        waveformView = view.findViewById(R.id.waveFormView)
+        timer = Timer(this)
+        startRecording()
+
+
+
     }
 
     //More Lifecyle Methods - Need to figure out for 2nd version of App
@@ -427,9 +482,6 @@ class AudioFragment : Fragment() {
         autoCompleteTextView.setAdapter(arrayAdapter)
 
     }
-
-
-    //TODO: Finish Commenting The Following Functions Down Below
 
     //Setup view sets up the dialog box by setting up all the smaller views compposed within it
     private fun setupView(view: View){
@@ -652,6 +704,9 @@ class AudioFragment : Fragment() {
         //Log statement for debuggin
         Log.d("FineTune", "Dialog Box Shown: " + dialogBoxIsShown)
 
+        //restart waveform view
+        startRecording()
+
         //Restart Audio Classification and Listening for New Sounds
         audioHelper.startAudioClassification()
     }
@@ -815,7 +870,65 @@ class AudioFragment : Fragment() {
         )
         return lbl2idMap[index]
     }
+
+
+    //MediaRecorder Methods
+    //Start Recording Here
+    private fun startRecording(){
+        //start recording here again ok
+        recorder = MediaRecorder()
+
+        //Date Formattiing for OutputFile
+        dirPath = "${context?.externalCacheDir?.absolutePath}/"
+        var simpleDateFormat = SimpleDateFormat("yyyy.MM.DD_hh.mm.ss")
+        var date = simpleDateFormat.format(Date())
+        fileName = "audio_record_$date"
+
+        //Configuring Recorder Object
+        recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+        recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+        recorder.setOutputFile("$dirPath$fileName.mp3")
+
+
+        try {
+            recorder.prepare()
+        } catch (e: IOException){ }
+
+        //Start Recording
+        recorder.start()
+
+        isRecording = true
+
+        timer.start()
+    }
+    //Stop Recording
+    private fun stopRecording(){
+        isRecording = false
+        recorder.stop()
+        timer.stop()
+        //call timer.stop()
+    }
+
+    override fun onTimerTick() {
+        var maxAmplitude = recorder.maxAmplitude.toFloat()
+
+        //Update Waveform View once created over here
+        waveformView.addAmplitude(maxAmplitude)
+    }
+
+
 }
+
+
+
+
+
+
+
+
+
+
 
 //And that's it for this extremly long file that is AudioFragment.kt
 // Hopefully these comments have been helpful

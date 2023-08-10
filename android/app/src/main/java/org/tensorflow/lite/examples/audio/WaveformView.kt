@@ -1,5 +1,6 @@
-package com.example.audiorecorder
+package org.tensorflow.lite.examples.audio
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -11,6 +12,7 @@ import android.util.AttributeSet
 import android.util.Log
 import android.view.View
 
+@SuppressLint("ResourceAsColor")
 class WaveformView(context: Context?, attrs: AttributeSet?) : View(context, attrs) {
 
     //main method is draw method
@@ -20,37 +22,38 @@ class WaveformView(context: Context?, attrs: AttributeSet?) : View(context, attr
     private var spikes = ArrayList<RectF>()
 
     private var radius = 6f
-    private var spikeWidth = 9f
+    private var spikeWidth = 7.5f
     private var distanceBetweenSpikes = 6f
 
     //right to left stuff
-    private var screenWidth = 0f
-    private var screenHeight = 400f
+    private var screenWidth = 300f
+    private var screenHeight = 100f
 
     private var maxNumberOfSpikesInWaveformView = 0
 
 
     init {
-        paint.color = Color.rgb(244, 81, 40)
+        //paint.color = Color.rgb(155, 61, 103)
+        paint.color = R.color.md_theme_dark_onPrimary
 
-        screenWidth = resources.displayMetrics.widthPixels.toFloat()
 
+        //Does this change when I change the display width?
+        Log.d("Screen Pixels", "Screen Width is $screenWidth")
         maxNumberOfSpikesInWaveformView = (screenWidth/(spikeWidth+distanceBetweenSpikes)).toInt()
     }
 
     fun addAmplitude(amp: Float){
-        Log.d("WaveformView", "Add Amplitude Called with amplitude $amp")
         //each time you get a new amplitude you store it in a list
 
         //normalize - idk why divide by 7
-        var norm = Math.min(amp.toInt()/20, 400).toFloat()
+        var norm = Math.min(amp.toInt()/50, screenHeight.toInt()).toFloat()
 
 
         amplitudes.add(norm)
 
         spikes.clear()
 
-        var amps = amplitudes.takeLast(maxNumberOfSpikesInWaveformView)
+        var amps = amplitudes.takeLast(maxNumberOfSpikesInWaveformView*2)
 
 
         for(i in amps.indices){
@@ -76,6 +79,7 @@ class WaveformView(context: Context?, attrs: AttributeSet?) : View(context, attr
     override fun draw(canvas: Canvas?) {
         super.draw(canvas)
 
+        //Do something snazzy with the pain
         spikes.forEach{
             canvas?.drawRoundRect(it, radius, radius, paint)
         }

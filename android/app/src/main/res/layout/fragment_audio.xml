@@ -21,6 +21,18 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+
+    <!--    <ImageView-->
+<!--        android:id="@+id/imageView"-->
+<!--        android:layout_width="360dp"-->
+<!--        android:layout_height="118dp"-->
+<!--        android:layout_marginTop="25dp"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toTopOf="parent"-->
+<!--        app:srcCompat="@drawable/colorful_sound_wave_equalizer_2" />-->
+
+
     <TextView
         android:id="@+id/resultTextView"
         android:layout_width="match_parent"
@@ -28,25 +40,25 @@
         android:layout_marginStart="32dp"
         android:layout_marginTop="20dp"
         android:layout_marginEnd="32dp"
-        android:text="listening..."
         android:fontFamily="@font/lexend_bold"
+        android:text="listening..."
         android:textAlignment="center"
         android:textAppearance="@style/TextAppearance.AppCompat.Display1"
         android:textSize="24sp"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView" />
+        app:layout_constraintTop_toBottomOf="@+id/waveFormView" />
 
-
-    <ImageView
-        android:id="@+id/imageView"
-        android:layout_width="360dp"
-        android:layout_height="118dp"
-        android:layout_marginTop="25dp"
+    <org.tensorflow.lite.examples.audio.WaveformView
+        android:id="@+id/waveFormView"
+        android:layout_width="300dp"
+        android:layout_height="100dp"
+        android:layout_marginTop="24dp"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.491"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/colorful_sound_wave_equalizer_2" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <com.google.android.material.switchmaterial.SwitchMaterial
         android:id="@+id/switchFineTune"
