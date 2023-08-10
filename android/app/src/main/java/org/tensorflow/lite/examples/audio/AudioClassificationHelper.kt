@@ -166,6 +166,13 @@ class AudioClassificationHelper(
     private fun classifyAudio() {
         tensorAudio.load(recorder) // 1, 15600(0.975*sr)
 
+        //if the recorder records sounds
+        //is this the audio data?
+        var audioData = tensorAudio.tensorBuffer.floatArray
+        for(data in audioData){
+            Log.d("Data", "Audio Data: $data")
+        }
+
 
 
         synchronized(lock) {
