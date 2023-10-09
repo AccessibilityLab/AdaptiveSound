@@ -16,51 +16,43 @@
 
 package org.tensorflow.lite.examples.audio
 
-import android.content.Context
-import android.media.AudioRecord
-import android.os.SystemClock
-import android.util.Log
-import java.util.concurrent.ScheduledThreadPoolExecutor
-import java.util.concurrent.TimeUnit
 /* Copied from model personalization */
-import org.tensorflow.lite.DataType
-import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.support.common.FileUtil
-import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
-import java.io.IOException
 /* End copy */
 
 /* My own */
-import java.lang.IllegalArgumentException
-import java.nio.LongBuffer
-import java.nio.FloatBuffer
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.util.concurrent.Executors
-import java.util.concurrent.ExecutorService
-import android.os.Handler
-import android.os.Looper
-import java.io.File
-import kotlinx.coroutines.delay
 /* End my own */
 
+import android.annotation.SuppressLint
+import android.content.Context
+import android.media.AudioRecord
+import android.media.audiofx.Visualizer
+import android.media.audiofx.Visualizer.OnDataCaptureListener
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import android.util.Log
+import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.examples.audio.fragments.AudioClassificationListener
 import org.tensorflow.lite.support.audio.TensorAudio
+import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.task.audio.classifier.AudioClassifier
-import org.tensorflow.lite.task.core.BaseOptions
-
-
+import java.io.File
+import java.nio.FloatBuffer
+import java.nio.LongBuffer
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 
 class AudioClassificationHelper(
-  val context: Context,
-  val listener: AudioClassificationListener,
-  var currentModel: String = YAMNET_MODEL,
-  var classificationThreshold: Float = DISPLAY_THRESHOLD,
-  var overlap: Float = DEFAULT_OVERLAP_VALUE,
-  var numOfResults: Int = DEFAULT_NUM_OF_RESULTS,
-  var currentDelegate: Int = 0,
-  var numThreads: Int = 2
+    val context: Context,
+    val listener: AudioClassificationListener,
+    var currentModel: String = YAMNET_MODEL,
+    var classificationThreshold: Float = DISPLAY_THRESHOLD,
+    var overlap: Float = DEFAULT_OVERLAP_VALUE,
+    var numOfResults: Int = DEFAULT_NUM_OF_RESULTS,
+    var currentDelegate: Int = 0,
+    var numThreads: Int = 2
 ) {
     private var interpreter: Interpreter? = null
     private lateinit var classifier: AudioClassifier
@@ -86,7 +78,7 @@ class AudioClassificationHelper(
         7 to "Knocking",
         8 to "Siren",
         9 to "Water Running"
-        )
+    )
 
     private var rmsThreshold = 0.01f
     private var isTraining = false
@@ -97,6 +89,7 @@ class AudioClassificationHelper(
 
     init {
         initClassifier()
+        Log.d("AudioClassificationHelper.kt", "We are Entering the ClassificationHelper.kt - 2")
     }
 
     fun initClassifier() {
@@ -124,36 +117,72 @@ class AudioClassificationHelper(
         return rms
     }
 
+    @SuppressLint("MissingPermission")
     fun startAudioClassification() {
+
+
+        //Format of the AudioClassifier
         val format = TensorAudio.TensorAudioFormat.builder()
             .setChannels(1)
             .setSampleRate(44100)
             .build()
         tensorAudio = TensorAudio.create(format, 44100)
+
+
+
+        //create an recorder of type AudioRecord
         recorder = AudioRecord(
             6, // audioSource, //
             44100, // sampleRateInHz, // change to 44100
             16, // channelConfig, // CHANNEL_IN_MONO
             4, // audioFormat, // ENCODING_PCM_16BIT
             44100 // bufferSizeInBytes // I DON'T KNOW 31200 when sr=16000
+            //AudioRecord.getMinBufferSize(44100, 16, 4)
         )
+
+//        var bufferSizeInBytes = AudioRecord.getMinBufferSize(44100, 16, 4)
+//        Log.d("MinBufferSize", "Buffer Size in Bytes: ${bufferSizeInBytes}")
+//        Log.d("Min Buffer Size", "Buffer Size in Frames w 44100 Buffer Size: ${recorder.bufferSizeInFrames}")
+//
+//
+//        var bufferSizeInBytes44100 = 44100
+//        Log.d("Current Buffer Size", "Buffer Size in Bytes: ${bufferSizeInBytes44100}")
+//        //Log.d("Current Buffer Size", "Buffer Size in Frames w 44100 Buffer Size: ${recorder.bufferSizeInFrames}")
+
+
         if (recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
             return
         }
+
         recorder.startRecording()
+
+
+
+
+        Log.d("AudioRecorder", "${recorder.recordingState}")
+
+        //ALSO STARTING MEDIA RECORDER AS AN INEFFICIENT WORKAROUND FOR WAVEFORM VISUALIZATION... to see if hacky solution works
+
+        //Create a Media Recorder in the AudioFragment.kt
+
+
         executor = ScheduledThreadPoolExecutor(1)
         // Each model will expect a specific audio recording length. This formula calculates that
         // length using the input buffer size and tensor format sample rate.
         // For example, YAMNET expects 0.975 second length recordings.
         // This needs to be in milliseconds to avoid the required Long value dropping decimals.
         // val lengthInMilliSeconds = ((classifier.requiredInputBufferSize * 1.0f) /
-                // classifier.requiredTensorAudioFormat.sampleRate) * 1000
+        // classifier.requiredTensorAudioFormat.sampleRate) * 1000
 
-        val lengthInMilliSeconds = 1000 // one second 
+        //Do something here
+
+
+        val lengthInMilliSeconds = 1000 // one second
 
         // val interval = (lengthInMilliSeconds * (1 - overlap)).toLong()
         val interval = (1000).toLong()
 
+        //What is this?
         executor.scheduleAtFixedRate(
             classifyRunnable,
             0,
@@ -164,13 +193,25 @@ class AudioClassificationHelper(
     private fun classifyAudio() {
         tensorAudio.load(recorder) // 1, 15600(0.975*sr)
 
+
+        //listener.getMaxAmplitudeArray(tensorAudio.getTensorBuffer().getFloatArray())
+        //Log.d("AudioClassificationHelper", "Sent Waveform Audio to Buffer")
+
+        //Call the listener over here
+
+        //EVERY one second it wants to classify audio -> but can I get the floatArray
+        //every 1ms get the max amplitude
+
+
+
+
         synchronized(lock) {
             val rms = calculateRMS(tensorAudio.getTensorBuffer().getFloatArray())
             // Log.d("AudioClassificationHelper", "rms: " + rms)
             if (rms > rmsThreshold){ // TODO: the method to define the threshold for sound happening
                 val sr = recorder.getSampleRate()
                 var inferenceTime = SystemClock.uptimeMillis()
-                
+
                 val inputs: MutableMap<String, Any> = HashMap()
                 inputs["x"] = tensorAudio.getTensorBuffer().buffer
 
@@ -197,12 +238,12 @@ class AudioClassificationHelper(
 
                 inferenceTime = SystemClock.uptimeMillis() - inferenceTime
                 listener.onResult(tensorAudio.getTensorBuffer().getFloatArray(),arrayOf(lbl[0].toFloat()).toFloatArray(),id2lblMap[lbl[0].toInt()].toString(), class_probs, inferenceTime)
-            } 
+            }
             else { // no sound
                 listener.onResult(tensorAudio.getTensorBuffer().getFloatArray(),arrayOf(1f).toFloatArray(),"silence", floatArrayOf(0f), 0)
             }
         }
-        
+
     }
 
     fun stopAudioClassification() {
@@ -217,7 +258,7 @@ class AudioClassificationHelper(
         categoricalLabel[label.get(0).toInt()] = 1f
         return categoricalLabel
     }
-    
+
 
     // Add data to the data buffer
     fun collectSample(audio: FloatArray, label: FloatArray) {
@@ -271,7 +312,7 @@ class AudioClassificationHelper(
                 )
             )
         }
-        
+
         Log.d("AudioClassificationHelper","Start fine-tuning")
 
         isTraining = true
@@ -298,13 +339,12 @@ class AudioClassificationHelper(
 
             val loss = trainOneStep(trainingBatchAudios,trainingBatchLabels)
             numIterations++
-            
+
             totalLoss += loss
-            
             meanLoss = loss
             handler.post {
                 listener.onTrainResult(loss, numIterations)
-            }      
+            }
         }
         dataBuffer.clear()
         isTraining = false
@@ -340,7 +380,7 @@ class AudioClassificationHelper(
         // Log.d("AudioClassificationHelper",outfile.lastModified().toString())
     }
 
-    
+
 
     /* End of on-edge training */
 

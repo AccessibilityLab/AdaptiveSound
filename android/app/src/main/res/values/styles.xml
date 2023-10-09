@@ -16,9 +16,23 @@
 -->
 <resources>
 
-    <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar" />
-    <style name="BottomSheetSpinnerItemStyle" parent="Widget.AppCompat.Light.DropDownItem.Spinner">
-        <item name="android:textSize">20sp</item>
-    </style>
+<!-- Base application theme. -->
+<style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+
+    <!-- Primary color for the app -->
+    <item name="colorPrimary">@color/md_theme_light_primary</item>
+
+    <!-- Color for text and icons on the primary color -->
+    <item name="colorOnPrimary">@color/md_theme_light_onPrimary</item>
+
+    <!-- Color for text and icons on the surface (background) -->
+    <item name="colorOnSurface">@color/md_theme_light_onSurface</item>
+
+    <item name="colorSecondary">@color/md_theme_light_secondary</item>
+
+</style>
+
+<style name="BottomSheetSpinnerItemStyle" parent="Widget.AppCompat.Light.DropDownItem.Spinner">
+    <item name="android:textSize">20sp</item>
+</style>
 </resources>

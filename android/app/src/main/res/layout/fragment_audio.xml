@@ -21,6 +21,18 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+
+    <!--    <ImageView-->
+<!--        android:id="@+id/imageView"-->
+<!--        android:layout_width="360dp"-->
+<!--        android:layout_height="118dp"-->
+<!--        android:layout_marginTop="25dp"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toTopOf="parent"-->
+<!--        app:srcCompat="@drawable/colorful_sound_wave_equalizer_2" />-->
+
+
     <TextView
         android:id="@+id/resultTextView"
         android:layout_width="match_parent"
@@ -28,147 +40,38 @@
         android:layout_marginStart="32dp"
         android:layout_marginTop="20dp"
         android:layout_marginEnd="32dp"
-        android:text="TextView On AudioFragment"
+        android:fontFamily="@font/lexend_bold"
+        android:text="listening..."
         android:textAlignment="center"
         android:textAppearance="@style/TextAppearance.AppCompat.Display1"
         android:textSize="24sp"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView" />
+        app:layout_constraintTop_toBottomOf="@+id/waveFormView" />
 
-
-    <Button
-        android:id="@+id/correctButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="100dp"
-        android:text="Correct"
-        app:layout_constraintEnd_toStartOf="@+id/incorrectButton"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView" />
-
-    <Button
-        android:id="@+id/incorrectButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="100dp"
-        android:text="Incorrect"
+    <org.tensorflow.lite.examples.audio.WaveformView
+        android:id="@+id/waveFormView"
+        android:layout_width="300dp"
+        android:layout_height="100dp"
+        android:layout_marginTop="24dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/correctButton"
-        app:layout_constraintTop_toBottomOf="@+id/imageView" />
+        app:layout_constraintHorizontal_bias="0.491"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <ImageView
-        android:id="@+id/imageView"
-        android:layout_width="360dp"
-        android:layout_height="118dp"
-        android:layout_marginTop="25dp"
+    <com.google.android.material.switchmaterial.SwitchMaterial
+        android:id="@+id/switchFineTune"
+        android:layout_width="222dp"
+        android:layout_height="57dp"
+        android:layout_marginBottom="10dp"
+        android:checked="true"
+        android:text="Fine-Tuning"
+        android:fontFamily="@font/lexend_bold"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/colorful_sound_wave_equalizer_2" />
+        app:layout_constraintHorizontal_bias="0.497"
+        app:layout_constraintStart_toStartOf="parent" />
 
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/TextInputLayout"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="32dp"
-        android:layout_marginTop="61dp"
-        android:hint="@string/sounds"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/correctButton">
-
-        <AutoCompleteTextView
-            android:id="@+id/auto_complete_txt"
-            android:layout_width="match_parent"
-            android:text="AutoCompleteTextView"
-            android:layout_height="wrap_content"
-            android:inputType="none" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <TextView
-        android:id="@+id/textView2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="32dp"
-        android:layout_marginTop="274dp"
-        android:text="Surety"
-        android:textAlignment="center"
-        android:textAppearance="@style/TextAppearance.AppCompat.Display1"
-        android:textSize="18sp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView" />
-
-    <Button
-        android:id="@+id/one_btn"
-        android:layout_width="40sp"
-        android:layout_height="40sp"
-        android:layout_marginTop="20dp"
-        android:background="@drawable/circle_button_background"
-        android:text="1"
-        android:textSize="12sp"
-        app:layout_constraintEnd_toStartOf="@+id/two_btn"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView2" />
-
-    <Button
-        android:id="@+id/two_btn"
-        android:layout_width="40sp"
-        android:layout_height="40sp"
-        android:layout_marginTop="20dp"
-        android:background="@drawable/circle_button_background"
-        android:text="2"
-        android:textSize="12sp"
-        app:layout_constraintEnd_toStartOf="@+id/three_btn"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/one_btn"
-        app:layout_constraintTop_toBottomOf="@+id/textView2" />
-
-    <Button
-        android:id="@+id/three_btn"
-        android:layout_width="40sp"
-        android:layout_height="40sp"
-        android:layout_marginTop="20dp"
-        android:background="@drawable/circle_button_background"
-        android:text="3"
-        android:textSize="12sp"
-        app:layout_constraintEnd_toStartOf="@+id/four_btn"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/two_btn"
-        app:layout_constraintTop_toBottomOf="@+id/textView2" />
-
-    <Button
-        android:id="@+id/four_btn"
-        android:layout_width="40sp"
-        android:layout_height="40sp"
-        android:layout_marginTop="20dp"
-        android:background="@drawable/circle_button_background"
-        android:text="4"
-        android:textSize="12sp"
-        app:layout_constraintEnd_toStartOf="@+id/five_btn"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/three_btn"
-        app:layout_constraintTop_toBottomOf="@+id/textView2" />
-
-    <Button
-        android:id="@+id/five_btn"
-        android:layout_width="40sp"
-        android:layout_height="40sp"
-        android:layout_marginTop="20dp"
-        android:background="@drawable/circle_button_background"
-        android:text="5"
-        android:textSize="12sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/four_btn"
-        app:layout_constraintTop_toBottomOf="@+id/textView2" />
-
-
-    <!--tools:listitem="@layout/item_probability" is something you might want to add?-->
 
 </androidx.constraintlayout.widget.ConstraintLayout>
