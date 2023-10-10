@@ -23,7 +23,13 @@ TODO: Leo
 TODO: Leo
 
 ## Support
-TODO: Hriday
+- Developed with [Dhruv Jain](https://web.eecs.umich.edu/~profdj/) and collaborators at [The Accessibility Lab](https://accessibility.eecs.umich.edu)
+- Contact [Leo Wu](https://www.linkedin.com/in/binomial14/) @AccesibilityLab through email `lyuanwu` at umich.edu
+- Contact [Hriday Chhabria](https://www.linkedin.com/in/hridayc/) @AccesibilityLab through email `hridayc` at umich.edu
+
+
+
+Drop us a note if you are using or plan to use SoundWatch for research purposes. We are also happy to help with any questions or issues.
 ## Acknowledgement
 TODO: Hriday
 
