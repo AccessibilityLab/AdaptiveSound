@@ -34,7 +34,8 @@ Drop us a note if you are using or plan to use SoundWatch for research purposes.
 TODO: Hriday
 
 ## Related Work
-TODO: Hriday
+- [HomeSound](https://makeabilitylab.cs.washington.edu/project/smarthomedhh/): An Iterative Field Deployment of an In-Home Sound Awareness System for Deaf or Hard of Hearing Users
+- [SoundWatch](https://github.com/AccessibilityLab/SoundWatch/): An Android-based app designed for commercially available smartwatches to provide glanceable, always-available, and private sound feedback in multiple contexts.
 ## License
 
 This project is licensed under the PolyForm Noncommercial License - see the [PolyForm Noncommercial License](https://polyformproject.org/licenses/noncommercial/1.0.0/) for details.
