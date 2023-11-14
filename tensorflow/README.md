@@ -1,5 +1,5 @@
 # Adaptive Sound Model
 
-## TODO
+## Overview
 
-I'll probabily just add the colab notebook in this directory.
+The script for training the adaptable sound classification model.
