@@ -1,5 +1,8 @@
 # Adaptive Sound
 
+## Disclaimer
+This is an alpha version of AdaptiveSound and is still undergoing internal testing. Please bear with us as we update this page with new updates 😃
+
 ## Introduction
 
 TODO: Leo
