@@ -16,10 +16,12 @@ Operating within a reinforcement learning framework, the sound classification mo
 
 ## Screenshots
 
-<img src="images/image1.jpeg" alt="ss1" width="200"/>
-<img src="images/image2.jpeg" alt="ss2" width="200"/>
-<img src="images/image3.jpeg" alt="ss3" width="200"/>
-<img src="images/image4.jpeg" alt="ss4" width="200"/>
+<p float="left">
+    <img src="images/image1.jpeg" alt="ss1" width="200"/>
+    <img src="images/image2.jpeg" alt="ss2" width="200"/>
+    <img src="images/image3.jpeg" alt="ss3" width="200"/>
+    <img src="images/image4.jpeg" alt="ss4" width="200"/>
+</p>
 
 ## File Structure
 
