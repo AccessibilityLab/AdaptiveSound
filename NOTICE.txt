@@ -1,0 +1,6 @@
+AdaptiveSound
+Copyright © 2024 The Regents of the University of Michigan
+
+This product includes software from TensorFlow (Apache 2.0)
+- Copyright 2018 The TensorFlow Authors.
+- https://github.com/tensorflow/examples/

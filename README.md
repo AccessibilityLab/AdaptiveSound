@@ -3,6 +3,8 @@
 ![Status](https://img.shields.io/badge/Version-alpha-brightgreen.svg)
 [![License](https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
 
+Copyright © 2024 The Regents of the University of Michigan
+
 This is an alpha version of AdaptiveSound and is still undergoing internal testing. Please bear with us as we update this page with new updates 😃
 
 ## Introduction
@@ -45,3 +47,15 @@ Drop us a note if you are using or plan to use AdaptiveSound for research purpos
 - [HomeSound](https://makeabilitylab.cs.washington.edu/project/smarthomedhh/): An Iterative Field Deployment of an In-Home Sound Awareness System for Deaf or Hard of Hearing Users
 - [SoundWatch](https://github.com/AccessibilityLab/SoundWatch/): An Android-based app designed for commercially available smartwatches to provide glanceable, always-available, and private sound feedback in multiple contexts.
 
+## Citation
+
+Please use the following citation if you want to use AdaptiveSound in your publication.
+```
+@inproceedings{do2023adaptivesound,
+  title={AdaptiveSound: An Interactive Feedback-Loop System to Improve Sound Recognition for Deaf and Hard of Hearing Users},
+  author={Do, Hang and Dang, Quan and Huang, Jeremy Zhengqi and Jain, Dhruv},
+  booktitle={Proceedings of the 25th International ACM SIGACCESS Conference on Computers and Accessibility},
+  pages={1--12},
+  year={2023}
+}
+```
